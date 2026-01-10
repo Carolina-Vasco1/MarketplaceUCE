@@ -1,0 +1,12 @@
+services:
+  gateway:
+    environment:
+      ENV: qa
+
+  auth-service:
+    environment:
+      ENV: qa
+
+  order-service:
+    environment:
+      ENV: qa

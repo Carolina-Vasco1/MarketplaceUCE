@@ -1,0 +1,26 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & start QA stack
+        run: docker compose -f docker-compose.yml -f docker-compose.qa.yml up -d --build
+
+      - name: Unit tests
+        run: |
+          docker compose exec -T auth-service pytest -q
+          docker compose exec -T order-service pytest -q
+
+      - name: Smoke test gateway
+        run: curl -f http://localhost:8000/docs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

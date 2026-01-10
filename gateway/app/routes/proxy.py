@@ -1,0 +1,82 @@
+from fastapi import APIRouter, Depends, Request, Response
+import httpx
+
+from ..core.security import get_current_user
+from ..core.rbac import require_roles
+from ..core.config import settings
+
+router = APIRouter()
+
+SERVICE_MAP = {
+    "auth": settings.AUTH_URL,
+    "products": settings.PRODUCT_URL,
+    "orders": settings.ORDER_URL,
+    "payments": settings.PAYMENT_URL,
+    "notifications": settings.NOTIF_URL,
+}
+
+async def _forward(request: Request, upstream: str) -> Response:
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        headers = dict(request.headers)
+        headers.pop("host", None)  # ❌ no enviar host
+
+        r = await client.request(
+            request.method,
+            f"{upstream}{request.url.path}",
+            params=request.query_params,
+            content=await request.body(),
+            headers=headers,
+        )
+
+        return Response(
+            content=r.content,
+            status_code=r.status_code,
+            headers=dict(r.headers),
+        )
+
+
+# --------------------
+# AUTH: público
+# --------------------
+@router.api_route("/auth", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+@router.api_route("/auth/", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+async def auth_root_proxy(request: Request):
+    return await _forward(request, SERVICE_MAP["auth"])
+
+@router.api_route("/auth/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+async def auth_proxy(request: Request, path: str):
+    return await _forward(request, SERVICE_MAP["auth"])
+
+
+# --------------------
+# PRODUCTS:
+# GET público
+# write seller/admin
+# --------------------
+@router.api_route("/products", methods=["GET"])
+@router.api_route("/products/", methods=["GET"])
+async def products_public_root(request: Request):
+    return await _forward(request, SERVICE_MAP["products"])
+
+@router.api_route("/products/{path:path}", methods=["GET"])
+async def products_public_proxy(request: Request, path: str):
+    return await _forward(request, SERVICE_MAP["products"])
+
+@router.api_route("/products", methods=["POST", "PUT", "PATCH", "DELETE"])
+@router.api_route("/products/", methods=["POST", "PUT", "PATCH", "DELETE"])
+async def products_private_root(request: Request, user=Depends(get_current_user)):
+    require_roles("seller", "admin")(user)
+    return await _forward(request, SERVICE_MAP["products"])
+
+@router.api_route("/products/{path:path}", methods=["POST", "PUT", "PATCH", "DELETE"])
+async def products_private_proxy(request: Request, path: str, user=Depends(get_current_user)):
+    require_roles("seller", "admin")(user)
+    return await _forward(request, SERVICE_MAP["products"])
+
+
+# --------------------
+# STATIC desde product-service 
+# --------------------
+@router.api_route("/static/{path:path}", methods=["GET"])
+async def static_proxy(request: Request, path: str):
+    return await _forward(request, SERVICE_MAP["products"])
