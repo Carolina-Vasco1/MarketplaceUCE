@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from jose import jwt
+import jwt
 from passlib.context import CryptContext
 
 from .config import settings
@@ -17,7 +17,7 @@ def verify_password(raw: str, hashed: str) -> bool:
     return pwd_context.verify(raw, hashed)
 
 
-def create_access_token(sub: str, role: str, uid: int | None = None) -> str:
+def create_access_token(sub: str, role: str, uid: Optional[str] = None) -> str:
     now = datetime.now(timezone.utc)
 
     payload: Dict[str, Any] = {
@@ -25,10 +25,9 @@ def create_access_token(sub: str, role: str, uid: int | None = None) -> str:
         "role": role,
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=settings.JWT_EXPIRES_MIN)).timestamp()),
-        "iss": getattr(settings, "SERVICE_NAME", "auth-service"),
+        
     }
 
-    # opcional: incluir uid si lo mandas
     if uid is not None:
         payload["uid"] = uid
 
