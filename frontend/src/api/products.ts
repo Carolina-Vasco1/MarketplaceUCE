@@ -22,7 +22,7 @@ export async function createProduct(payload: ProductCreate) {
 }
 
 export async function deleteProduct(id: string) {
-  const r = await http.delete(`/products/${id}`);
+  const r = await http.delete(`/products/${id}`); l
   return r.data;
 }
 
