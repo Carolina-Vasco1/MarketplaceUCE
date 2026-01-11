@@ -1,0 +1,12 @@
+services:
+  gateway:
+    environment:
+      ENV: production
+
+  auth-service:
+    environment:
+      ENV: production
+
+  order-service:
+    environment:
+      ENV: production

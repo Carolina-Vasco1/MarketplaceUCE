@@ -4,7 +4,7 @@ import redis.asyncio as redis
 
 from app.deps.db import db
 from app.schemas.auth import OTPRequestIn, OTPVerifyIn, RegisterIn, LoginIn, TokenOut
-from app.core.validators import validate_institutional_email
+from app.core.validators import validate_any_email
 from app.core.config import settings
 from app.services.email_service import EmailService
 from app.services.otp_service import OTPService
@@ -20,7 +20,7 @@ def redis_client() -> redis.Redis:
 @router.post("/request-otp")
 async def request_otp(payload: OTPRequestIn):
     try:
-        validate_institutional_email(payload.email)
+        validate_any_email(payload.email)
         email = payload.email.lower().strip()
 
         r = redis_client()
@@ -44,7 +44,7 @@ async def request_otp(payload: OTPRequestIn):
 @router.post("/verify-otp")
 async def verify_otp(payload: OTPVerifyIn):
     try:
-        validate_institutional_email(payload.email)
+        validate_any_email(payload.email)
         email = payload.email.lower().strip()
 
         r = redis_client()
@@ -63,7 +63,7 @@ async def verify_otp(payload: OTPVerifyIn):
 @router.post("/register", response_model=TokenOut)
 async def register(payload: RegisterIn, session: AsyncSession = Depends(db)):
     try:
-        validate_institutional_email(payload.email)
+        validate_any_email(payload.email)
         email = payload.email.lower().strip()
 
         r = redis_client()
@@ -84,7 +84,7 @@ async def register(payload: RegisterIn, session: AsyncSession = Depends(db)):
 @router.post("/login", response_model=TokenOut)
 async def login(payload: LoginIn, session: AsyncSession = Depends(db)):
     try:
-        validate_institutional_email(payload.email)
+        validate_any_email(payload.email)
         email = payload.email.lower().strip()
 
         token = await UserService.login(session, email, payload.password)
