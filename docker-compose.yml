@@ -1,3 +1,5 @@
+name: marketplaceuce
+
 services:
   gateway:
     build:
@@ -6,9 +8,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ALG: HS256
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+
       AUTH_URL: http://auth-service:8001
       PRODUCT_URL: http://product-service:8002
       ORDER_URL: http://order-service:8003
@@ -20,85 +23,111 @@ services:
       - order-service
       - payment-service
       - notification-service
+    restart: unless-stopped
 
   auth-service:
     build:
       context: .
       dockerfile: services/auth-service/Dockerfile
     environment:
-      POSTGRES_URL: postgresql+asyncpg://auth:auth@postgres:5432/auth_db
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ALG: HS256
-      JWT_EXPIRES_MIN: 1440
-      REDIS_URL: redis://redis:6379/0
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      SMTP_FROM: ${SMTP_FROM}
+      POSTGRES_URL: ${AUTH_POSTGRES_URL:-postgresql+asyncpg://auth:auth@postgres:5432/auth_db}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
+      JWT_EXPIRES_MIN: ${JWT_EXPIRES_MIN:-1440}
+
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
   product-service:
     build:
       context: .
       dockerfile: services/product-service/Dockerfile
     environment:
-      MONGO_URL: mongodb://mongo:27017
-      MONGO_DB: catalog_db
-      REDIS_URL: redis://redis:6379/0
-      UPLOAD_DIR: /app/uploads
-      PUBLIC_BASE_URL: http://localhost:8000
-    volumes:
-      - product_uploads:/app/uploads
+      MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
+      MONGO_DB: ${MONGO_DB:-catalog_db}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     depends_on:
-      - mongo
-      - redis
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
   order-service:
     build:
       context: .
       dockerfile: services/order-service/Dockerfile
+    
+    ports:
+    - "8003:8003"
+    
     environment:
-      POSTGRES_URL: postgresql+asyncpg://order:order@postgres:5432/order_db
-      KAFKA_BOOTSTRAP: kafka:9092
+      POSTGRES_URL: ${ORDER_POSTGRES_URL:-postgresql+asyncpg://order:order@postgres:5432/order_db}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
     depends_on:
-      - postgres
-      - kafka
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    restart: unless-stopped
 
   payment-service:
     build:
       context: .
       dockerfile: services/payment-service/Dockerfile
     environment:
-      KAFKA_BOOTSTRAP: kafka:9092
-      PAYPAL_BASE_URL: ${PAYPAL_BASE_URL}
-      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
-      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
-      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
+
+      PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
+      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
     depends_on:
-      - kafka
+      kafka:
+        condition: service_started
+    restart: unless-stopped
 
   notification-service:
     build:
       context: .
       dockerfile: services/notification-service/Dockerfile
     environment:
-      KAFKA_BOOTSTRAP: kafka:9092
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
     depends_on:
-      - kafka
+      kafka:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    restart: unless-stopped
 
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infra/postgres/init:/docker-entrypoint-initdb.d
     command: ["postgres", "-c", "max_connections=200"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
 
   mongo:
     image: mongo:7
@@ -106,18 +135,32 @@ services:
       - "27017:27017"
     volumes:
       - mongodata:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval \"db.adminCommand('ping')\" --quiet || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+    restart: unless-stopped
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    restart: unless-stopped
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
@@ -128,15 +171,23 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+
+      # Interno (contenedores) = 29092, Host (tu PC) = 9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    restart: unless-stopped
 
   rabbitmq:
     image: rabbitmq:3-management
     ports:
       - "5672:5672"
       - "15672:15672"
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:v2.55.0
@@ -151,6 +202,7 @@ services:
       - order-service
       - payment-service
       - notification-service
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:11.2.0
@@ -160,8 +212,8 @@ services:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - prometheus
+    restart: unless-stopped
 
 volumes:
   pgdata:
   mongodata:
-  product_uploads:

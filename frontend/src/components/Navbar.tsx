@@ -13,19 +13,19 @@ export default function Navbar() {
         <Link to="/" className="font-bold text-lg">Marketplace UCE</Link>
 
         <div className="flex items-center gap-3 text-sm">
-          <Link to="/" className="hover:underline">Inicio</Link>
+          <Link to="/" className="hover:underline">Home</Link>
 
           {!token && (
             <>
               <Link to="/login" className="hover:underline">Login</Link>
-              <Link to="/register" className="hover:underline">Registro OTP</Link>
+              <Link to="/register" className="hover:underline">OTP Register</Link>
             </>
           )}
 
           {token && (session?.role === "seller" || session?.role === "admin") && (
             <>
-              <Link to="/sell" className="hover:underline">Vender</Link>
-              <Link to="/my-products" className="hover:underline">Mis productos</Link>
+              <Link to="/sell" className="hover:underline">Sell</Link>
+              <Link to="/my-products" className="hover:underline">My Products</Link>
             </>
           )}
 
@@ -41,7 +41,7 @@ export default function Navbar() {
                 nav("/");
               }}
             >
-              Salir
+              Logout
             </button>
           )}
         </div>

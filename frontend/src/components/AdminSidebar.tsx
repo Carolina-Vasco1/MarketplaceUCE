@@ -11,7 +11,7 @@ export default function ProductCard({ p }: { p: Product }) {
         to={`/products/${p.id}`}
         className="mt-2 inline-flex justify-center bg-black text-white rounded-lg px-3 py-2 text-sm"
       >
-        Ver detalle
+        View details
       </Link>
     </div>
   );

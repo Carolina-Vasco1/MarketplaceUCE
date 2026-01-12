@@ -14,6 +14,7 @@ export default function SellProduct() {
 
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
+  const [fileName, setFileName] = useState<string>("No file selected");
 
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,7 +26,6 @@ export default function SellProduct() {
     try {
       let images: string[] = [];
 
-      // ✅ si hay imagen, subir primero
       if (image) {
         const url = await uploadProductImage(image); // /static/xxx.jpg
         images = [url];
@@ -37,15 +37,17 @@ export default function SellProduct() {
         price,
         seller_id,
         category_id,
-        images, // ✅ se guarda en el backend
+        images,
       });
 
       setMsg(`Product created: ${p.title}`);
       setTitle("");
       setDescription("");
       setPrice(0);
+      setCategoryId("general");
       setImage(null);
       setPreview("");
+      setFileName("No file selected");
     } catch (e: any) {
       setMsg(e?.response?.data?.detail ?? "Unable to create product.");
     } finally {
@@ -85,27 +87,44 @@ export default function SellProduct() {
             className="w-full border rounded-lg p-2"
             value={category_id}
             onChange={(e) => setCategoryId(e.target.value)}
-            placeholder="Category ID (ej: general)"
+            placeholder="Category ID (e.g. general)"
           />
 
-          {/* ✅ Imagen */}
+          {/* Image upload */}
           <div className="space-y-2">
+            <label
+              htmlFor="productImage"
+              className="inline-block cursor-pointer border rounded-lg px-3 py-2 bg-gray-100"
+            >
+              Select file
+            </label>
+
             <input
+              id="productImage"
               type="file"
               accept="image/*"
+              className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0] || null;
                 setImage(f);
-                if (f) setPreview(URL.createObjectURL(f));
-                else setPreview("");
+
+                if (f) {
+                  setFileName(f.name);
+                  setPreview(URL.createObjectURL(f));
+                } else {
+                  setFileName("No file selected");
+                  setPreview("");
+                }
               }}
             />
+
+            <p className="text-sm text-gray-500">{fileName}</p>
 
             {preview && (
               <img
                 src={preview}
                 className="w-full h-48 object-cover rounded-lg border"
-                alt="preview"
+                alt="Preview"
               />
             )}
           </div>
@@ -119,7 +138,10 @@ export default function SellProduct() {
           </button>
 
           {msg && <p className="text-sm text-blue-700">{msg}</p>}
-          <p className="text-xs text-gray-500">Seller ID (JWT sub): {seller_id}</p>
+
+          <p className="text-xs text-gray-500">
+            Seller ID (JWT sub): {seller_id}
+          </p>
         </div>
       </div>
     </Container>
