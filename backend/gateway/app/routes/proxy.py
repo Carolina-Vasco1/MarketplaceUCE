@@ -57,7 +57,6 @@ async def auth_proxy(request: Request, path: str):
     return await _forward(request, SERVICE_MAP["auth"])
 
 
-# Products endpoints - LEGACY
 @router.api_route("/products", methods=["GET"])
 @router.api_route("/products/", methods=["GET"])
 async def products_public_root(request: Request):
@@ -78,15 +77,10 @@ async def products_private_proxy(request: Request, path: str, user=Depends(get_c
     require_roles("seller", "admin")(user)
     return await _forward(request, SERVICE_MAP["products"])
 
-
-# Static files from product-service
 @router.api_route("/static/{path:path}", methods=["GET"])
 async def static_proxy(request: Request, path: str):
     return await _forward(request, SERVICE_MAP["products"])
 
-
-# Generic service proxy route: /{service}/api/v1/{path:path}
-# MUST BE LAST to avoid conflicts with specific routes above
 @router.api_route("/{service}/api/v1", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 async def service_root_proxy(request: Request, service: str):
     if service not in SERVICE_MAP:

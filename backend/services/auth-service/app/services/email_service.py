@@ -1,10 +1,12 @@
 import smtplib
+import ssl
 from email.mime.text import MIMEText
 from app.core.config import settings
 
+
 class EmailService:
     def send_otp(self, to_email: str, code: str) -> None:
-        # DEV MODE
+        # Si no hay SMTP configurado, modo DEV
         if not settings.SMTP_HOST or not settings.SMTP_USER or not settings.SMTP_PASSWORD:
             print(f"[DEV OTP] Enviar OTP a {to_email}: {code}")
             return
@@ -16,10 +18,12 @@ class EmailService:
         msg["From"] = settings.SMTP_FROM
         msg["To"] = to_email
 
+        context = ssl.create_default_context()
+
         try:
             server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20)
             server.ehlo()
-            server.starttls()
+            server.starttls(context=context)
             server.ehlo()
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(msg)
