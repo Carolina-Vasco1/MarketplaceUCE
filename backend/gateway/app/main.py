@@ -3,6 +3,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from .routes.proxy import router
 from .routes.config import router as config_router
+from .routes.admin import router as admin_router
 from .middleware.cors import add_cors
 from .middleware.waf import SimpleWAFMiddleware
 from .middleware.request_id import RequestIDMiddleware
@@ -13,6 +14,7 @@ add_cors(app)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(SimpleWAFMiddleware)
 app.include_router(config_router)
+app.include_router(admin_router)
 app.include_router(router)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
