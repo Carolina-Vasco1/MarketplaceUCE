@@ -3,10 +3,10 @@ import httpx
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
-AUTH_SERVICE_URL = "http://auth-service:8000"  # nombre del service en docker-compose
+AUTH_SERVICE_URL = "http://auth-service:8000"  # nombre del servicio en docker-compose
 
 @router.get("/users")
-async def proxy_list_users(request: Request):
+async def proxy_admin_users(request: Request):
     headers = {}
     if "authorization" in request.headers:
         headers["authorization"] = request.headers["authorization"]
