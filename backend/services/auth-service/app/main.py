@@ -5,11 +5,10 @@ from app.routes.auth import router as auth_router
 
 app = FastAPI(title="Auth Service", version="1.0.0")
 
-# CORS (por si pruebas directo al 8001)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
