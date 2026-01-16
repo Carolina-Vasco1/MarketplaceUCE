@@ -33,25 +33,36 @@ export default function CartPage() {
   });
 
   useEffect(() => {
-    // Load PayPal script
+    // Load PayPal script with client-id from backend
     if (document.querySelector('script[src*="paypal.com/sdk/js"]')) {
       // Script already loaded
       setPaypalReady(true);
       return;
     }
 
-    const script = document.createElement("script");
-    script.src =
-      "https://www.paypal.com/sdk/js?client-id=AQc_rjH8LzqYhb7ThvI9oCpQxV4K5p0VBgZqJ3qJ3q3qJ3qJ3q&currency=USD";
-    script.async = true;
-    script.onload = () => {
-      console.log("✅ PayPal SDK loaded successfully");
-      setPaypalReady(true);
+    const loadPayPalScript = async () => {
+      try {
+        // Get PayPal client-id from backend
+        const configResponse = await fetch("/api/v1/config/paypal");
+        const config = await configResponse.json();
+        
+        const script = document.createElement("script");
+        script.src = `https://www.paypal.com/sdk/js?client-id=${config.client_id}&currency=USD`;
+        script.async = true;
+        script.onload = () => {
+          console.log("✅ PayPal SDK loaded successfully");
+          setPaypalReady(true);
+        };
+        script.onerror = () => {
+          console.error("❌ Failed to load PayPal SDK");
+        };
+        document.head.appendChild(script);
+      } catch (error) {
+        console.error("❌ Failed to get PayPal config:", error);
+      }
     };
-    script.onerror = () => {
-      console.error("❌ Failed to load PayPal SDK");
-    };
-    document.head.appendChild(script);
+
+    loadPayPalScript();
 
     return () => {
       // Cleanup: remove script if component unmounts
