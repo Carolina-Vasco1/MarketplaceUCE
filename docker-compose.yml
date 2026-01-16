@@ -17,6 +17,10 @@ services:
       ORDER_URL: http://order-service:8003
       PAYMENT_URL: http://payment-service:8004
       NOTIF_URL: http://notification-service:8005
+
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
+      
     depends_on:
       - auth-service
       - product-service
