@@ -30,8 +30,10 @@ export default function AdminUsers() {
 
   async function changeRole(u: AdminUser, role: Role) {
     try {
-      await adminSetUserRole(u.id, role);
-      await load();
+      if (role !== "user") {
+        await adminSetUserRole(u.id, role as "buyer" | "seller" | "admin");
+        await load();
+      }
     } catch (e: any) {
       alert(e?.response?.data?.detail ?? "Unable to change role.");
     }

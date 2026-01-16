@@ -14,7 +14,12 @@ export function Guard({ children, roles }: Props) {
 
   try {
     const payload: any = jwtDecode(token);
-    const role: Role | undefined = payload?.role;
+    let role: Role | undefined = payload?.role;
+    
+    // Map 'buyer' to 'user' for consistency
+    if (role === "buyer") {
+      role = "user" as Role;
+    }
 
     if (roles && role && !roles.includes(role)) return <Navigate to="/" replace />;
     return <>{children}</>;
