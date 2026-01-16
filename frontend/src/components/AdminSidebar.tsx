@@ -1,18 +1,20 @@
 import { Link } from "react-router-dom";
-import type { Product } from "../types/models";
 
-export default function ProductCard({ p }: { p: Product }) {
+export default function AdminSidebar() {
   return (
-    <div className="border rounded-xl p-4 flex flex-col gap-2 bg-white shadow-sm">
-      <div className="font-semibold text-lg line-clamp-1">{p.title}</div>
-      <div className="text-sm text-gray-600 line-clamp-2">{p.description}</div>
-      <div className="font-bold">${p.price.toFixed(2)}</div>
-      <Link
-        to={`/products/${p.id}`}
-        className="mt-2 inline-flex justify-center bg-black text-white rounded-lg px-3 py-2 text-sm"
-      >
-        View details
-      </Link>
+    <div className="w-64 bg-gray-100 border-r border-gray-300 p-4">
+      <h2 className="font-bold text-lg mb-4">Admin Menu</h2>
+      <nav className="space-y-2">
+        <Link to="/admin/dashboard" className="block px-4 py-2 rounded hover:bg-gray-200">
+          Dashboard
+        </Link>
+        <Link to="/admin/products" className="block px-4 py-2 rounded hover:bg-gray-200">
+          Products
+        </Link>
+        <Link to="/admin/users" className="block px-4 py-2 rounded hover:bg-gray-200">
+          Users
+        </Link>
+      </nav>
     </div>
   );
 }

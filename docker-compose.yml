@@ -3,7 +3,7 @@ name: marketplaceuce
 services:
   gateway:
     build:
-      context: .
+      context: ./backend
       dockerfile: gateway/Dockerfile
     ports:
       - "8000:8000"
@@ -27,7 +27,7 @@ services:
 
   auth-service:
     build:
-      context: .
+      context: ./backend
       dockerfile: services/auth-service/Dockerfile
     environment:
       POSTGRES_URL: ${AUTH_POSTGRES_URL:-postgresql+asyncpg://auth:auth@postgres:5432/auth_db}
@@ -51,7 +51,7 @@ services:
 
   product-service:
     build:
-      context: .
+      context: ./backend
       dockerfile: services/product-service/Dockerfile
     environment:
       MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
@@ -66,7 +66,7 @@ services:
 
   order-service:
     build:
-      context: .
+      context: ./backend
       dockerfile: services/order-service/Dockerfile
     
     ports:
@@ -84,7 +84,7 @@ services:
 
   payment-service:
     build:
-      context: .
+      context: ./backend
       dockerfile: services/payment-service/Dockerfile
     environment:
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
@@ -100,7 +100,7 @@ services:
 
   notification-service:
     build:
-      context: .
+      context: ./backend
       dockerfile: services/notification-service/Dockerfile
     environment:
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
@@ -120,7 +120,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./infra/postgres/init:/docker-entrypoint-initdb.d
+      - ./backend/infra/postgres/init:/docker-entrypoint-initdb.d
     command: ["postgres", "-c", "max_connections=200"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
@@ -192,9 +192,11 @@ services:
   prometheus:
     image: prom/prometheus:v2.55.0
     volumes:
-      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./backend/infra/prometheus:/etc/prometheus:ro
     ports:
       - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
     depends_on:
       - gateway
       - auth-service

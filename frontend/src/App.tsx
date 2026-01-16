@@ -6,10 +6,20 @@ import Login from "./pages/Login";
 import RegisterOTP from "./pages/RegisterOTP";
 import SellProduct from "./pages/SellProduct";
 import MyProducts from "./pages/MyProducts";
+import CartPage from "./pages/CartPage";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminProducts from "./pages/admin/AdminProducts";
+import AdminReportsPage from "./pages/AdminReportsPage";
+
+// Nueva páginas de servicios
+import SearchPage from "./pages/SearchPage";
+import ReviewsPage from "./pages/ReviewsPage";
+import UserProfilePage from "./pages/UserProfilePage";
+import RecommendationsPage from "./pages/RecommendationsPage";
+import OrdersPage from "./pages/OrdersPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 
 import { Guard } from "./auth/guard";
 
@@ -19,12 +29,39 @@ export default function App() {
       <Navbar />
 
       <Routes>
+        {/* Marketplace */}
         <Route path="/" element={<Marketplace />} />
         <Route path="/products/:id" element={<ProductDetail />} />
+        <Route path="/search" element={<SearchPage />} />
+        <Route path="/cart" element={<CartPage />} />
 
+        {/* Auth */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<RegisterOTP />} />
 
+        {/* User */}
+        <Route
+          path="/profile"
+          element={
+            <Guard roles={["user", "seller", "admin"]}>
+              <UserProfilePage />
+            </Guard>
+          }
+        />
+        <Route
+          path="/reviews"
+          element={
+            <Guard roles={["user", "seller", "admin"]}>
+              <ReviewsPage />
+            </Guard>
+          }
+        />
+        <Route
+          path="/recommendations"
+          element={<RecommendationsPage />}
+        />
+
+        {/* Seller */}
         <Route
           path="/sell"
           element={
@@ -41,7 +78,24 @@ export default function App() {
             </Guard>
           }
         />
+        <Route
+          path="/my-orders"
+          element={
+            <Guard roles={["user", "seller", "admin"]}>
+              <OrdersPage />
+            </Guard>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <Guard roles={["seller", "admin"]}>
+              <AnalyticsPage />
+            </Guard>
+          }
+        />
 
+        {/* Admin */}
         <Route
           path="/admin"
           element={
@@ -63,6 +117,14 @@ export default function App() {
           element={
             <Guard roles={["admin"]}>
               <AdminProducts />
+            </Guard>
+          }
+        />
+        <Route
+          path="/admin/reports"
+          element={
+            <Guard roles={["admin"]}>
+              <AdminReportsPage />
             </Guard>
           }
         />

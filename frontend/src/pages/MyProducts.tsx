@@ -60,20 +60,40 @@ export default function MyProducts() {
       {!loading && !err && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
           {items.map((p) => (
-            <div key={p.id} className="border rounded-xl p-4 bg-white">
-              <div className="font-semibold">{p.title}</div>
-              <div className="text-sm text-gray-600 line-clamp-2">
-                {p.description}
+            <div key={p.id} className="border rounded-xl overflow-hidden bg-white hover:shadow-lg transition-shadow">
+              {/* Product Image */}
+              {p.image_url && (
+                <img
+                  src={p.image_url}
+                  alt={p.title}
+                  className="w-full h-48 object-cover"
+                />
+              )}
+              {!p.image_url && (
+                <div className="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-400">
+                  No image
+                </div>
+              )}
+              
+              {/* Product Details */}
+              <div className="p-4">
+                <div className="font-semibold text-lg truncate">{p.title}</div>
+                <div className="text-sm text-gray-600 line-clamp-2 mt-1">
+                  {p.description}
+                </div>
+                <div className="text-xs text-gray-500 mt-2">
+                  {p.category}
+                </div>
+                <div className="font-bold text-lg mt-2 text-blue-600">
+                  ${p.price.toFixed(2)}
+                </div>
+                <button
+                  className="mt-3 w-full bg-red-500 hover:bg-red-600 text-white rounded-lg px-3 py-2 text-sm transition-colors"
+                  onClick={() => onDelete(p.id)}
+                >
+                  Delete
+                </button>
               </div>
-              <div className="font-bold mt-2">
-                ${p.price.toFixed(2)}
-              </div>
-              <button
-                className="mt-3 w-full border rounded-lg px-3 py-2 text-sm"
-                onClick={() => onDelete(p.id)}
-              >
-                Delete
-              </button>
             </div>
           ))}
           {items.length === 0 && (

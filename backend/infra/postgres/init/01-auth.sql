@@ -1,0 +1,67 @@
+CREATE DATABASE auth_db;
+CREATE DATABASE order_db;
+CREATE DATABASE product_db;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'auth') THEN
+    CREATE ROLE auth LOGIN PASSWORD 'auth';
+  END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'order') THEN
+    CREATE ROLE "order" LOGIN PASSWORD 'order';
+  END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'product') THEN
+    CREATE ROLE product LOGIN PASSWORD 'product';
+  END IF;
+END $$;
+
+GRANT ALL PRIVILEGES ON DATABASE auth_db TO auth;
+GRANT ALL PRIVILEGES ON DATABASE order_db TO "order";
+GRANT ALL PRIVILEGES ON DATABASE product_db TO product;
+
+-- Grant schema privileges
+GRANT ALL PRIVILEGES ON SCHEMA public TO auth;
+GRANT ALL PRIVILEGES ON SCHEMA public TO "order";
+GRANT ALL PRIVILEGES ON SCHEMA public TO product;
+
+-- Allow creating tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO auth;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO "order";
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO product;
+
+\c auth_db
+
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'buyer',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO auth;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO auth;
+
+-- admin inicial (password: admin123)
+INSERT INTO users (email, password_hash, role)
+VALUES (
+  'admin@uce.edu.ec',
+  '$2b$12$kIXQJQvZk9uJ2PqYFfFz9O2Yw9L9KQpYh5FjYtZ9OQ0zZqQ0ZqQ0Z',
+  'admin'
+)
+ON CONFLICT (email) DO NOTHING;
+
+-- Connect to order_db and set permissions
+\c order_db
+
+GRANT ALL PRIVILEGES ON SCHEMA public TO "order";
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO "order";
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO "order";
+
+-- Connect to product_db and set permissions
+\c product_db
+
+GRANT ALL PRIVILEGES ON SCHEMA public TO product;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO product;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO product;
