@@ -2,13 +2,16 @@ from fastapi import APIRouter, Depends
 from ..core.security import get_current_user
 from ..core.rbac import require_roles
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 
 @router.get("/users")
-@require_roles("admin")
 async def get_admin_users(current_user: dict = Depends(get_current_user)):
     """Get list of users for admin dashboard"""
+    # Check if user is admin
+    if current_user.get("role") != "admin":
+        return {"error": "Unauthorized"}
+    
     return [
         {
             "id": "1",
@@ -22,9 +25,12 @@ async def get_admin_users(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/products")
-@require_roles("admin")
 async def get_admin_products(current_user: dict = Depends(get_current_user)):
     """Get list of products for admin dashboard"""
+    # Check if user is admin
+    if current_user.get("role") != "admin":
+        return {"error": "Unauthorized"}
+    
     return [
         {
             "id": "prod-1",
@@ -78,9 +84,12 @@ async def get_admin_products(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/dashboard")
-@require_roles("admin")
 async def get_admin_dashboard(current_user: dict = Depends(get_current_user)):
     """Get dashboard stats for admin"""
+    # Check if user is admin
+    if current_user.get("role") != "admin":
+        return {"error": "Unauthorized"}
+    
     return {
         "stats": {
             "total_users": 1,
