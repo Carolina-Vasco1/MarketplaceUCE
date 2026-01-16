@@ -1,18 +1,20 @@
 from __future__ import annotations
+
 import os
 from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.postgres import make_engine, make_session_factory
+
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 POSTGRES_URL = os.getenv(
     "POSTGRES_URL",
     "postgresql+asyncpg://auth:auth@postgres:5432/auth_db",
 )
 
-_engine = make_engine(POSTGRES_URL)
-_SessionLocal = make_session_factory(_engine)
+engine = create_async_engine(POSTGRES_URL, pool_pre_ping=True)
+SessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
+db = SessionLocal
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with _SessionLocal() as session:
+    async with SessionLocal() as session:
         yield session
