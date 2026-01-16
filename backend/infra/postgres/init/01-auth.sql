@@ -47,7 +47,7 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO auth;
 INSERT INTO users (email, password_hash, role)
 VALUES (
   'admin@uce.edu.ec',
-  '$2b$12$kIXQJQvZk9uJ2PqYFfFz9O2Yw9L9KQpYh5FjYtZ9OQ0zZqQ0ZqQ0Z',
+  '$2b$12$eImiTXuWVxfaHNAVZ3zCe.V5UPMCQZbPxoKN8w.sLaVMIXSmL2JFm',
   'admin'
 )
 ON CONFLICT (email) DO NOTHING;
