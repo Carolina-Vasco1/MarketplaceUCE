@@ -1,16 +1,15 @@
 from fastapi import FastAPI
-from prometheus_fastapi_instrumentator import Instrumentator
-from .routes.webhooks import router, bus
+from fastapi.middleware.cors import CORSMiddleware
+from app.routes.paypal import router as paypal_router
 
 app = FastAPI(title="Payment Service", version="1.0.0")
-app.include_router(router)
 
-@app.on_event("startup")
-async def _startup():
-    await bus.start()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.on_event("shutdown")
-async def _shutdown():
-    await bus.stop()
-
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+app.include_router(paypal_router)
