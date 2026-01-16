@@ -1,21 +1,27 @@
-from fastapi import APIRouter, Request, Response
-import httpx
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.db.deps import get_db
+from app.deps.auth import require_admin
+from app.db.models.user import User
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
-AUTH_SERVICE_URL = "http://auth-service:8000"  # nombre del servicio en docker-compose
-
 @router.get("/users")
-async def proxy_admin_users(request: Request):
-    headers = {}
-    if "authorization" in request.headers:
-        headers["authorization"] = request.headers["authorization"]
-
-    async with httpx.AsyncClient() as client:
-        r = await client.get(f"{AUTH_SERVICE_URL}/api/v1/admin/users", headers=headers)
-
-    return Response(
-        content=r.content,
-        status_code=r.status_code,
-        media_type=r.headers.get("content-type", "application/json"),
-    )
+async def list_users(
+    db: AsyncSession = Depends(get_db),
+    _admin=Depends(require_admin),
+):
+    result = await db.execute(select(User).order_by(User.id))
+    users = result.scalars().all()
+    return [
+        {
+            "id": str(u.id),
+            "email": u.email,
+            "role": u.role,
+            "is_active": u.is_active,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+        }
+        for u in users
+    ]
