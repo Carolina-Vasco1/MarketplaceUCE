@@ -4,7 +4,8 @@ import httpx
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
-AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8000")
+# ✅ usa AUTH_URL que YA existe en docker-compose
+AUTH_SERVICE_URL = os.getenv("AUTH_URL", "http://auth-service:8001")
 
 def _auth_headers(request: Request) -> dict:
     headers = {}
@@ -19,10 +20,14 @@ async def proxy_list_users(request: Request):
             f"{AUTH_SERVICE_URL}/api/v1/admin/users",
             headers=_auth_headers(request),
         )
-    return Response(content=r.content, status_code=r.status_code, media_type=r.headers.get("content-type", "application/json"))
+    return Response(
+        content=r.content,
+        status_code=r.status_code,
+        media_type=r.headers.get("content-type", "application/json"),
+    )
 
 @router.patch("/users/{user_id}/role")
-async def proxy_set_user_role(user_id: str, request: Request):
+async def proxy_set_role(user_id: str, request: Request):
     payload = await request.json()
     async with httpx.AsyncClient(timeout=15.0) as client:
         r = await client.patch(
@@ -30,10 +35,14 @@ async def proxy_set_user_role(user_id: str, request: Request):
             headers=_auth_headers(request),
             json=payload,
         )
-    return Response(content=r.content, status_code=r.status_code, media_type=r.headers.get("content-type", "application/json"))
+    return Response(
+        content=r.content,
+        status_code=r.status_code,
+        media_type=r.headers.get("content-type", "application/json"),
+    )
 
 @router.patch("/users/{user_id}/active")
-async def proxy_set_user_active(user_id: str, request: Request):
+async def proxy_set_active(user_id: str, request: Request):
     payload = await request.json()
     async with httpx.AsyncClient(timeout=15.0) as client:
         r = await client.patch(
@@ -41,4 +50,8 @@ async def proxy_set_user_active(user_id: str, request: Request):
             headers=_auth_headers(request),
             json=payload,
         )
-    return Response(content=r.content, status_code=r.status_code, media_type=r.headers.get("content-type", "application/json"))
+    return Response(
+        content=r.content,
+        status_code=r.status_code,
+        media_type=r.headers.get("content-type", "application/json"),
+    )
