@@ -6,13 +6,18 @@ export async function adminListUsers() {
   return r.data;
 }
 
-export async function adminSetUserRole(user_id: string, role: "buyer" | "seller" | "admin") {
+export async function adminSetUserRole(
+  user_id: string,
+  role: "buyer" | "seller" | "admin"
+) {
   const r = await http.patch(`/api/v1/admin/users/${user_id}/role`, { role });
   return r.data;
 }
 
 export async function adminSetUserActive(user_id: string, is_active: boolean) {
-  const r = await http.patch(`/api/v1/admin/users/${user_id}/active`, { is_active });
+  const r = await http.patch(`/api/v1/admin/users/${user_id}/active`, {
+    is_active,
+  });
   return r.data;
 }
 
