@@ -29,6 +29,18 @@ async def get_admin_users():
     ]
 
 
+@app.patch("/api/v1/admin/users/{user_id}/role")
+async def set_admin_user_role(user_id: str, payload: dict):
+    """Change user role"""
+    return {"ok": True, "message": f"User {user_id} role updated"}
+
+
+@app.patch("/api/v1/admin/users/{user_id}/active")
+async def set_admin_user_active(user_id: str, payload: dict):
+    """Change user active status"""
+    return {"ok": True, "message": f"User {user_id} active status updated"}
+
+
 @app.get("/api/v1/admin/products")
 async def get_admin_products():
     """Get list of products for admin dashboard"""
@@ -82,6 +94,12 @@ async def get_admin_products():
             "stock": 10
         }
     ]
+
+
+@app.delete("/api/v1/admin/products/{product_id}")
+async def delete_admin_product(product_id: str):
+    """Delete a product"""
+    return {"ok": True, "message": f"Product {product_id} deleted"}
 
 
 app.include_router(router)
