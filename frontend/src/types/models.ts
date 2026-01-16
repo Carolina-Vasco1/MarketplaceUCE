@@ -28,10 +28,13 @@ export type ProductCreate = {
 };
 
 export type AdminUser = {
-  id: string;
+  id: string;             
   email: string;
   role: Role;
-  is_verified: boolean;
   is_active: boolean;
   created_at?: string;
+
+
+  is_verified?: boolean;
 };
+
