@@ -34,38 +34,82 @@ export default function CartPage() {
 
   useEffect(() => {
     // Load PayPal script
+    if (document.querySelector('script[src*="paypal.com/sdk/js"]')) {
+      // Script already loaded
+      setPaypalReady(true);
+      return;
+    }
+
     const script = document.createElement("script");
     script.src =
       "https://www.paypal.com/sdk/js?client-id=AQc_rjH8LzqYhb7ThvI9oCpQxV4K5p0VBgZqJ3qJ3q3qJ3qJ3q&currency=USD";
     script.async = true;
     script.onload = () => {
+      console.log("✅ PayPal SDK loaded successfully");
       setPaypalReady(true);
-      if (showCheckout && window.paypal) {
-        initPayPalButtons();
-      }
     };
     script.onerror = () => {
-      console.error("Failed to load PayPal SDK");
+      console.error("❌ Failed to load PayPal SDK");
     };
     document.head.appendChild(script);
+
+    return () => {
+      // Cleanup: remove script if component unmounts
+      const existingScript = document.querySelector(
+        'script[src*="paypal.com/sdk/js"]'
+      );
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
   }, []);
 
   useEffect(() => {
-    if (showCheckout && paypalReady && window.paypal && validateForm()) {
-      setTimeout(() => initPayPalButtons(), 100);
+    if (showCheckout && paypalReady) {
+      console.log("🔄 Checkout view shown, PayPal ready. Waiting for DOM...");
+      // Increase delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        const container = document.getElementById("paypal-button-container");
+        console.log("🔍 Looking for PayPal container:", !!container);
+        console.log("🔍 window.paypal exists:", !!window.paypal);
+        
+        if (container && window.paypal?.Buttons) {
+          console.log("✅ All conditions met, initializing PayPal buttons");
+          initPayPalButtons();
+        } else {
+          console.warn("⚠️ Conditions not met. Container:", !!container, "window.paypal:", !!window.paypal);
+        }
+      }, 500);
     }
   }, [showCheckout, paypalReady]);
 
   const initPayPalButtons = async () => {
     const container = document.getElementById("paypal-button-container");
-    if (!window.paypal?.Buttons || !container) return;
     
-    // Clear previous buttons
+    if (!container) {
+      console.error("PayPal container not found");
+      return;
+    }
+
+    if (!window.paypal) {
+      console.error("window.paypal not available");
+      return;
+    }
+
+    if (!window.paypal.Buttons) {
+      console.error("window.paypal.Buttons not available");
+      return;
+    }
+
+    console.log("Starting PayPal button initialization");
+    
+    // Clear any existing content
     container.innerHTML = "";
 
-    window.paypal
-      .Buttons({
+    try {
+      const buttonsInstance = window.paypal.Buttons({
         createOrder: async (data: any, actions: any) => {
+          console.log("Creating PayPal order");
           const total = getTotalPrice() + getTotalPrice() * 0.1;
           return actions.order.create({
             purchase_units: [
@@ -110,6 +154,7 @@ export default function CartPage() {
         },
         onApprove: async (data: any, actions: any) => {
           try {
+            console.log("Payment approved, capturing order");
             const order = await actions.order.capture();
             console.log("Payment successful:", order);
 
@@ -152,8 +197,14 @@ export default function CartPage() {
           console.error("PayPal error:", error);
           alert("Payment error. Please try again.");
         },
-      })
-      .render("#paypal-button-container");
+      });
+
+      console.log("Rendering PayPal buttons");
+      buttonsInstance.render("#paypal-button-container");
+      console.log("PayPal buttons rendered successfully");
+    } catch (error) {
+      console.error("Error creating PayPal buttons:", error);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -378,20 +429,54 @@ export default function CartPage() {
                     <option value="FR">France</option>
                     <option value="JP">Japan</option>
                     <option value="MX">Mexico</option>
+                    <option value="EC">Ecuador</option>
+                    <option value="CO">Colombia</option>
+                    <option value="PE">Peru</option>
+                    <option value="CL">Chile</option>
+                    <option value="AR">Argentina</option>
+                    <option value="BR">Brazil</option>
+                    <option value="ES">Spain</option>
+                    <option value="IT">Italy</option>
+                    <option value="NL">Netherlands</option>
+                    <option value="BE">Belgium</option>
+                    <option value="CH">Switzerland</option>
+                    <option value="SE">Sweden</option>
+                    <option value="NO">Norway</option>
+                    <option value="DK">Denmark</option>
+                    <option value="FI">Finland</option>
+                    <option value="PL">Poland</option>
+                    <option value="CZ">Czech Republic</option>
+                    <option value="HU">Hungary</option>
+                    <option value="RO">Romania</option>
+                    <option value="GR">Greece</option>
+                    <option value="PT">Portugal</option>
+                    <option value="TR">Turkey</option>
+                    <option value="SG">Singapore</option>
+                    <option value="MY">Malaysia</option>
+                    <option value="TH">Thailand</option>
+                    <option value="ID">Indonesia</option>
+                    <option value="PH">Philippines</option>
+                    <option value="VN">Vietnam</option>
+                    <option value="KR">South Korea</option>
+                    <option value="CN">China</option>
+                    <option value="IN">India</option>
+                    <option value="ZA">South Africa</option>
+                    <option value="EG">Egypt</option>
+                    <option value="NG">Nigeria</option>
                   </select>
                 </div>
               </div>
 
               {/* PayPal Button Container */}
-              <div className="mb-6">
-                {paypalReady ? (
-                  <div id="paypal-button-container" className="mb-4"></div>
-                ) : (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                    <p className="text-blue-800">Loading PayPal...</p>
-                  </div>
-                )}
-              </div>
+              {paypalReady ? (
+                <div className="mb-6 p-4 bg-gray-50 border-2 border-gray-200 rounded-lg min-h-60 flex items-center justify-center">
+                  <div id="paypal-button-container" className="w-full"></div>
+                </div>
+              ) : (
+                <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                  <p className="text-blue-800">Loading PayPal... Please wait</p>
+                </div>
+              )}
 
               <div className="flex gap-4">
                 <button
