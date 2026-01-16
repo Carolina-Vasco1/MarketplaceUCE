@@ -73,8 +73,7 @@ export default function AdminUsers() {
                     <div>
                       <div className="font-semibold">{u.email}</div>
                       <div className="text-xs text-gray-500">
-                        id: {u.id} | verified: {String(u.is_verified)} | active:{" "}
-                        {String(u.is_active)}
+                        id: {u.id} | active: {String(u.is_active)}
                       </div>
                     </div>
 

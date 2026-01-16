@@ -34,6 +34,5 @@ export type AdminUser = {
   is_active: boolean;
   created_at?: string;
 
-
   is_verified?: boolean;
 };
