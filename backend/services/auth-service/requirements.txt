@@ -18,3 +18,5 @@ email-validator==2.2.0
 prometheus-fastapi-instrumentator==7.0.0
 
 
+aiosmtplib==3.0.1
+
