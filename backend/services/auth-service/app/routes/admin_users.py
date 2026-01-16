@@ -7,10 +7,10 @@ from app.deps.auth import require_admin
 from app.db.models.user import User
 from app.schemas.user_out import UserOut
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 @router.get("/users", response_model=list[UserOut])
-async def get_users(
+async def list_users(
     db: AsyncSession = Depends(get_db),
     _admin = Depends(require_admin),
 ):

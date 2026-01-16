@@ -37,4 +37,3 @@ export type AdminUser = {
 
   is_verified?: boolean;
 };
-
