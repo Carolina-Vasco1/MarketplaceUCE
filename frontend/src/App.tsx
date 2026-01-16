@@ -105,6 +105,15 @@ export default function App() {
           }
         />
         <Route
+          path="/admin/dashboard"
+          element={
+            <Guard roles={["admin"]}>
+            <AdminDashboard />
+        </Guard>
+           }
+        />
+
+        <Route
           path="/admin/users"
           element={
             <Guard roles={["admin"]}>
