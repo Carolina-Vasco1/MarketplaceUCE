@@ -76,7 +76,6 @@ async def get_admin_products():
 async def delete_admin_product(product_id: str):
     return {"ok": True, "message": f"Product {product_id} deleted"}
 
-# ✅ Resto de proxies generales del gateway
 app.include_router(router)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
