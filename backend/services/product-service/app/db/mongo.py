@@ -1,9 +1,34 @@
 from motor.motor_asyncio import AsyncIOMotorClient
-from ..core.config import settings
+from app.core.config import settings
 
-client = AsyncIOMotorClient(settings.MONGO_URL)
-db = client[settings.MONGO_DB]
+_client: AsyncIOMotorClient | None = None
 
-products = db["products"]
-categories = db["categories"]
-audit_logs = db["audit_logs"]
+
+def get_mongo_client() -> AsyncIOMotorClient:
+    """
+    Singleton de MongoClient (seguro para FastAPI + Docker)
+    """
+    global _client
+    if _client is None:
+        _client = AsyncIOMotorClient(
+            settings.MONGO_URL,
+            uuidRepresentation="standard",
+        )
+    return _client
+
+
+def get_db():
+    client = get_mongo_client()
+    return client[settings.MONGO_DB]
+
+
+def get_products_collection():
+    return get_db()["products"]
+
+
+def get_categories_collection():
+    return get_db()["categories"]
+
+
+def get_audit_logs_collection():
+    return get_db()["audit_logs"]
