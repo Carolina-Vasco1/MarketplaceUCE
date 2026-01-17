@@ -37,7 +37,7 @@ services:
       POSTGRES_URL: ${AUTH_POSTGRES_URL:-postgresql+asyncpg://auth:auth@postgres:5432/auth_db}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
 
-      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_ALG: ${JWT_ALG:-HS256}
       JWT_EXPIRES_MIN: ${JWT_EXPIRES_MIN:-1440}
 
@@ -176,7 +176,6 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
 
-      # Interno (contenedores) = 29092, Host (tu PC) = 9092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
