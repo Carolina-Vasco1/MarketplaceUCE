@@ -10,8 +10,7 @@ def get_client() -> AsyncIOMotorClient:
     return _client
 
 def get_db():
-    client = get_client()
-    return client[settings.MONGO_DB]
+    return get_client()[settings.MONGO_DB]
 
 def get_products_collection():
     return get_db()["products"]
