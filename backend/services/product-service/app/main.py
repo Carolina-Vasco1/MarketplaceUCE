@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
-from app.routes.admin_products import router as admin_products_router   
 
-from .routes.products import router as products_router
-from .routes.categories import router as categories_router
-from .routes.upload import router as upload_router
+from app.routes.products import router as products_router
+from app.routes.categories import router as categories_router
+from app.routes.upload import router as upload_router
+from app.routes.admin_products import router as admin_products_router
 
 app = FastAPI(title="Product Service", version="1.0.0")
 
