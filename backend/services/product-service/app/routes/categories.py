@@ -1,27 +1,33 @@
-import uuid
 from fastapi import APIRouter, HTTPException
-from ..db.mongo import categories, audit_logs
-from ..schemas.category import CategoryIn, CategoryOut
+from app.db.mongo import get_categories_collection, get_audit_logs_collection
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
-@router.post("/", response_model=CategoryOut)
-async def create_category(payload: CategoryIn):
-    _id = str(uuid.uuid4())
-    await categories.insert_one({"_id": _id, "name": payload.name})
-    await audit_logs.insert_one({"action": "CATEGORY_CREATED", "category_id": _id})
-    return CategoryOut(id=_id, name=payload.name)
-
-@router.get("/", response_model=list[CategoryOut])
+@router.get("/")
 async def list_categories():
-    out: list[CategoryOut] = []
-    async for doc in categories.find({}):
-        out.append(CategoryOut(id=doc["_id"], name=doc["name"]))
-    return out
+    categories = get_categories_collection()
+    docs = await categories.find({}).sort("_id", 1).to_list(length=500)
+    return [{"id": str(d["_id"]), "name": d.get("name", "")} for d in docs]
 
-@router.get("/{category_id}", response_model=CategoryOut)
-async def get_category(category_id: str):
-    doc = await categories.find_one({"_id": category_id})
-    if not doc:
-        raise HTTPException(404, "Not found")
-    return CategoryOut(id=doc["_id"], name=doc["name"])
+@router.post("/")
+async def create_category(payload: dict):
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+
+    categories = get_categories_collection()
+    audit_logs = get_audit_logs_collection()
+
+    existing = await categories.find_one({"name": name})
+    if existing:
+        raise HTTPException(status_code=409, detail="Category already exists")
+
+    res = await categories.insert_one({"name": name})
+
+    await audit_logs.insert_one({
+        "action": "CATEGORY_CREATED",
+        "category_id": str(res.inserted_id),
+        "name": name,
+    })
+
+    return {"id": str(res.inserted_id), "name": name}
