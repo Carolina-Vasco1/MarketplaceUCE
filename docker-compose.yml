@@ -58,8 +58,8 @@ services:
       context: ./backend
       dockerfile: services/product-service/Dockerfile
     environment:
-      MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
-      MONGO_DB: ${MONGO_DB:-catalog_db}
+      MONGO_URL: ${MONGO_URL}
+      MONGO_DB: ${MONGO_DB}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     depends_on:
       mongo:
