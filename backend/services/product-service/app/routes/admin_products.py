@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from bson import ObjectId
 
-from app.deps.auth import require_admin
 from app.db.mongo import get_products_collection
+from app.deps.auth import require_admin
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
