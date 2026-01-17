@@ -18,14 +18,7 @@ app.include_router(config_router)
 app.include_router(auth_proxy_router)
 app.include_router(admin_users_proxy_router)
 
-@app.get("/api/v1/admin/products")
-async def get_admin_products():
-    return [ ... mock ...]
-
-@app.delete("/api/v1/admin/products/{product_id}")
-async def delete_admin_product(product_id: str):
-    return {"ok": True, "message": f"Product {product_id} deleted"}
-
+    
 app.include_router(router)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
