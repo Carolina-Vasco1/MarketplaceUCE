@@ -7,6 +7,7 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 AUTH_SERVICE_URL = os.getenv("AUTH_URL", "http://auth-service:8001")
 
 
+
 def _copy_headers(request: Request) -> dict:
     """
     Copia headers útiles (Authorization).
@@ -33,36 +34,25 @@ async def proxy_list_users(request: Request):
         media_type=r.headers.get("content-type", "application/json"),
     )
 
-
-@router.put("/users/{user_id}/role")
+@router.patch("/users/{user_id}/role")
 async def proxy_set_role(user_id: str, request: Request):
     payload = await request.json()
     async with httpx.AsyncClient(timeout=30.0) as client:
-        r = await client.put(
-            f"{AUTH_SERVICE_URL}/admin/users/{user_id}/role",  # ✅
+        r = await client.patch(
+            f"{AUTH_SERVICE_URL}/api/v1/admin/users/{user_id}/role",
             headers=_copy_headers(request),
             json=payload,
         )
+    return Response(content=r.content, status_code=r.status_code, media_type=r.headers.get("content-type", "application/json"))
 
-    return Response(
-        content=r.content,
-        status_code=r.status_code,
-        media_type=r.headers.get("content-type", "application/json"),
-    )
-
-
-@router.put("/users/{user_id}/active")
+@router.patch("/users/{user_id}/active")
 async def proxy_set_active(user_id: str, request: Request):
     payload = await request.json()
     async with httpx.AsyncClient(timeout=30.0) as client:
-        r = await client.put(
-            f"{AUTH_SERVICE_URL}/admin/users/{user_id}/active",  # ✅
+        r = await client.patch(
+            f"{AUTH_SERVICE_URL}/api/v1/admin/users/{user_id}/active",
             headers=_copy_headers(request),
             json=payload,
         )
+    return Response(content=r.content, status_code=r.status_code, media_type=r.headers.get("content-type", "application/json"))
 
-    return Response(
-        content=r.content,
-        status_code=r.status_code,
-        media_type=r.headers.get("content-type", "application/json"),
-    )
