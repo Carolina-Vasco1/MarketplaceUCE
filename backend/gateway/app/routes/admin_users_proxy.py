@@ -23,16 +23,10 @@ def _copy_headers(request: Request) -> dict:
 async def proxy_list_users(request: Request):
     async with httpx.AsyncClient(timeout=30.0) as client:
         r = await client.get(
-            f"{AUTH_SERVICE_URL}/admin/users",   # ✅ RUTA REAL EN AUTH-SERVICE
-            params=request.query_params,
+            f"{AUTH_SERVICE_URL}/api/v1/admin/users",
             headers=_copy_headers(request),
         )
-
-    return Response(
-        content=r.content,
-        status_code=r.status_code,
-        media_type=r.headers.get("content-type", "application/json"),
-    )
+    return Response(content=r.content, status_code=r.status_code, media_type=r.headers.get("content-type", "application/json"))
 
 @router.patch("/users/{user_id}/role")
 async def proxy_set_role(user_id: str, request: Request):
@@ -55,4 +49,3 @@ async def proxy_set_active(user_id: str, request: Request):
             json=payload,
         )
     return Response(content=r.content, status_code=r.status_code, media_type=r.headers.get("content-type", "application/json"))
-
