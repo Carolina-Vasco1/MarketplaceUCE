@@ -31,3 +31,4 @@ async def create_category(payload: dict):
     })
 
     return {"id": str(res.inserted_id), "name": name}
+
