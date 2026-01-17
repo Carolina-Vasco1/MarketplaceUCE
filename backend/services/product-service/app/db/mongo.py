@@ -4,22 +4,18 @@ from app.core.config import settings
 _client: AsyncIOMotorClient | None = None
 
 
-def get_mongo_client() -> AsyncIOMotorClient:
-    """
-    Singleton de MongoClient (seguro para FastAPI + Docker)
-    """
+def get_client() -> AsyncIOMotorClient:
     global _client
     if _client is None:
         _client = AsyncIOMotorClient(
             settings.MONGO_URL,
-            uuidRepresentation="standard",
+            serverSelectionTimeoutMS=5000,
         )
     return _client
 
 
 def get_db():
-    client = get_mongo_client()
-    return client[settings.MONGO_DB]
+    return get_client()[settings.MONGO_DB]
 
 
 def get_products_collection():
