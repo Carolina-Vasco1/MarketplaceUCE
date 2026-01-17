@@ -1,6 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from bson import ObjectId
-
 from app.db.mongo import get_products_collection
 from app.deps.auth import require_admin
 
@@ -14,12 +12,13 @@ async def admin_list_products(_admin=Depends(require_admin)):
 
     return [
         {
-            "id": str(p["_id"]),
+            "id": str(p.get("_id")),
             "title": p.get("title", ""),
             "description": p.get("description", ""),
             "price": float(p.get("price", 0)),
             "seller_id": p.get("seller_id"),
             "image_url": p.get("image_url"),
+            "status": p.get("status", "active"),
             "created_at": p.get("created_at"),
         }
         for p in items
@@ -29,12 +28,8 @@ async def admin_list_products(_admin=Depends(require_admin)):
 @router.delete("/products/{product_id}")
 async def admin_delete_product(product_id: str, _admin=Depends(require_admin)):
     col = get_products_collection()
-    try:
-        oid = ObjectId(product_id)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid product id")
 
-    res = await col.delete_one({"_id": oid})
+    res = await col.delete_one({"_id": product_id})  # ✅ UUID string
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Product not found")
 
