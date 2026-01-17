@@ -37,7 +37,7 @@ services:
       POSTGRES_URL: ${AUTH_POSTGRES_URL:-postgresql+asyncpg://auth:auth@postgres:5432/auth_db}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
 
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
       JWT_ALG: ${JWT_ALG:-HS256}
       JWT_EXPIRES_MIN: ${JWT_EXPIRES_MIN:-1440}
 
@@ -58,6 +58,8 @@ services:
       context: ./backend
       dockerfile: services/product-service/Dockerfile
     environment:
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALG: ${JWT_ALG:-HS256}
       MONGO_URL: ${MONGO_URL}
       MONGO_DB: ${MONGO_DB}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
