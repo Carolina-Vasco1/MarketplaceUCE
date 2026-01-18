@@ -53,28 +53,37 @@ async def paypal_health():
         "client_id_present": bool(settings.PAYPAL_CLIENT_ID),
     }
 
-
 @router.post("/create-order")
 async def create_order(body: CreateOrderIn):
-    client = get_paypal_client()
+    if client is None:
+        raise HTTPException(status_code=500, detail="PayPal credentials missing (PAYPAL_CLIENT_ID/SECRET)")
 
     req = OrdersCreateRequest()
     req.prefer("return=representation")
     req.request_body({
         "intent": "CAPTURE",
         "purchase_units": [
-            {
-                "amount": {
-                    "currency_code": body.currency,
-                    "value": f"{body.total:.2f}"
-                }
-            }
+            {"amount": {"currency_code": body.currency, "value": f"{body.total:.2f}"}}
         ],
+        "application_context": {
+            "brand_name": "Marketplace UCE",
+            "landing_page": "LOGIN",
+            "user_action": "PAY_NOW",
+            "return_url": "http://localhost:5173/paypal/success",
+            "cancel_url": "http://localhost:5173/paypal/cancel",
+        },
     })
 
     try:
         res = client.execute(req)
-        return {"id": res.result.id, "status": res.result.status}
+
+        approve_url = None
+        for link in getattr(res.result, "links", []):
+            if link.rel == "approve":
+                approve_url = link.href
+                break
+
+        return {"id": res.result.id, "approve_url": approve_url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PayPal create-order error: {str(e)}")
 
