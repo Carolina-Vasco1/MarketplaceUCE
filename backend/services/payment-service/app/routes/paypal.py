@@ -89,3 +89,7 @@ async def capture_order(body: CaptureOrderIn):
         return {"status": res.result.status, "id": getattr(res.result, "id", body.order_id)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PayPal capture-order error: {str(e)}")
+
+@router.get("/health")
+async def health():
+    return {"ok": True, "service": "payment-service", "provider": "paypal", "env": os.getenv("PAYPAL_ENV", "sandbox")}
