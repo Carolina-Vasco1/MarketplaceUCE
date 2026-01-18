@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from paypalcheckoutsdk.core import PayPalHttpClient, SandboxEnvironment, LiveEnvironment
@@ -16,7 +17,7 @@ def get_paypal_client() -> PayPalHttpClient:
     if not settings.PAYPAL_CLIENT_ID or not settings.PAYPAL_CLIENT_SECRET:
         raise HTTPException(
             status_code=500,
-            detail="PayPal credentials missing (PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET)"
+            detail="PayPal credentials missing (PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET)",
         )
 
     env_name = (getattr(settings, "PAYPAL_ENV", "sandbox") or "sandbox").lower()
@@ -41,46 +42,55 @@ class CreateOrderIn(BaseModel):
 
 
 class CaptureOrderIn(BaseModel):
-    order_id: str
+    order_id: str = Field(..., min_length=5)
 
 
 @router.get("/health")
 async def paypal_health():
-    # Simple para saber si lee env vars
+    # Endpoint único de health (NO duplicar)
     return {
         "ok": True,
-        "env": getattr(settings, "PAYPAL_ENV", "sandbox"),
-        "client_id_present": bool(settings.PAYPAL_CLIENT_ID),
+        "service": "payment-service",
+        "provider": "paypal",
+        "env": getattr(settings, "PAYPAL_ENV", os.getenv("PAYPAL_ENV", "sandbox")),
+        "client_id_present": bool(getattr(settings, "PAYPAL_CLIENT_ID", "")),
     }
+
 
 @router.post("/create-order")
 async def create_order(body: CreateOrderIn):
-    if client is None:
-        raise HTTPException(status_code=500, detail="PayPal credentials missing (PAYPAL_CLIENT_ID/SECRET)")
+    client = get_paypal_client()
 
     req = OrdersCreateRequest()
     req.prefer("return=representation")
-    req.request_body({
-        "intent": "CAPTURE",
-        "purchase_units": [
-            {"amount": {"currency_code": body.currency, "value": f"{body.total:.2f}"}}
-        ],
-        "application_context": {
-            "brand_name": "Marketplace UCE",
-            "landing_page": "LOGIN",
-            "user_action": "PAY_NOW",
-            "return_url": "http://localhost:5173/paypal/success",
-            "cancel_url": "http://localhost:5173/paypal/cancel",
-        },
-    })
+    req.request_body(
+        {
+            "intent": "CAPTURE",
+            "purchase_units": [
+                {
+                    "amount": {
+                        "currency_code": body.currency,
+                        "value": f"{body.total:.2f}",
+                    }
+                }
+            ],
+            "application_context": {
+                "brand_name": "Marketplace UCE",
+                "landing_page": "LOGIN",
+                "user_action": "PAY_NOW",
+                "return_url": "http://localhost:5173/paypal/success",
+                "cancel_url": "http://localhost:5173/paypal/cancel",
+            },
+        }
+    )
 
     try:
         res = client.execute(req)
 
         approve_url = None
-        for link in getattr(res.result, "links", []):
-            if link.rel == "approve":
-                approve_url = link.href
+        for link in getattr(res.result, "links", []) or []:
+            if getattr(link, "rel", "") == "approve":
+                approve_url = getattr(link, "href", None)
                 break
 
         return {"id": res.result.id, "approve_url": approve_url}
@@ -98,7 +108,3 @@ async def capture_order(body: CaptureOrderIn):
         return {"status": res.result.status, "id": getattr(res.result, "id", body.order_id)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PayPal capture-order error: {str(e)}")
-
-@router.get("/health")
-async def health():
-    return {"ok": True, "service": "payment-service", "provider": "paypal", "env": os.getenv("PAYPAL_ENV", "sandbox")}
