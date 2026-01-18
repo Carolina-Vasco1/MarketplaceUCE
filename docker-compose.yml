@@ -95,10 +95,10 @@ services:
     environment:
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
 
-      PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
+      PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
-      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
+      PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
     depends_on:
       kafka:
         condition: service_started
