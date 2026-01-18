@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 import uuid
 import json
+
 from app.db.mongo import get_products_collection, get_audit_logs_collection
 from app.db.redis import redis_client
 from app.schemas.product import ProductIn, ProductOut
@@ -26,13 +27,12 @@ async def list_products(
 
     docs = await products.find(query).limit(limit).to_list(length=limit)
 
-    return [
-        ProductOut(
-            id=str(d["_id"]),
-            **{k: v for k, v in d.items() if k != "_id"}
-        )
-        for d in docs
-    ]
+    out: list[ProductOut] = []
+    for d in docs:
+        pid = str(d.get("_id"))
+        payload = {k: v for k, v in d.items() if k != "_id"}
+        out.append(ProductOut(id=pid, **payload))
+    return out
 
 
 @router.post("/", response_model=ProductOut)
@@ -45,11 +45,13 @@ async def create_product(payload: ProductIn):
 
     await products.insert_one(doc)
 
-    await audit_logs.insert_one({
-        "action": "PRODUCT_CREATED",
-        "product_id": _id,
-        "seller_id": payload.seller_id,
-    })
+    await audit_logs.insert_one(
+        {
+            "action": "PRODUCT_CREATED",
+            "product_id": _id,
+            "seller_id": doc.get("seller_id"),
+        }
+    )
 
     await redis_client.delete(cache_key(_id))
     return ProductOut(id=_id, **payload.model_dump(), status="active")
@@ -69,9 +71,8 @@ async def get_product(product_id: str):
 
     out = ProductOut(
         id=str(doc["_id"]),
-        **{k: v for k, v in doc.items() if k != "_id"}
+        **{k: v for k, v in doc.items() if k != "_id"},
     )
-
     await redis_client.set(cache_key(product_id), out.model_dump_json(), ex=60)
     return out
 
@@ -90,18 +91,20 @@ async def update_status(product_id: str, status: str):
 
     await products.update_one({"_id": product_id}, {"$set": {"status": status}})
 
-    await audit_logs.insert_one({
-        "action": "PRODUCT_STATUS_UPDATED",
-        "product_id": product_id,
-        "status": status,
-    })
+    await audit_logs.insert_one(
+        {
+            "action": "PRODUCT_STATUS_UPDATED",
+            "product_id": product_id,
+            "status": status,
+        }
+    )
 
     await redis_client.delete(cache_key(product_id))
 
     doc = await products.find_one({"_id": product_id})
     return ProductOut(
         id=str(doc["_id"]),
-        **{k: v for k, v in doc.items() if k != "_id"}
+        **{k: v for k, v in doc.items() if k != "_id"},
     )
 
 
@@ -117,11 +120,13 @@ async def delete_product(product_id: str):
 
     await products.delete_one({"_id": product_id})
 
-    await audit_logs.insert_one({
-        "action": "PRODUCT_DELETED",
-        "product_id": product_id,
-        "seller_id": doc.get("seller_id"),
-    })
+    await audit_logs.insert_one(
+        {
+            "action": "PRODUCT_DELETED",
+            "product_id": product_id,
+            "seller_id": doc.get("seller_id"),
+        }
+    )
 
     await redis_client.delete(cache_key(product_id))
     return {"ok": True, "message": "Product deleted"}
