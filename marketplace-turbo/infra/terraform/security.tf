@@ -1,10 +1,10 @@
-# SG del ALB: recibe HTTP público
+# SG del Load Balancer (HTTP público)
 resource "aws_security_group" "alb_sg" {
-  name   = "${var.app_name}-alb-sg"
-  vpc_id = aws_vpc.this.id
+  name        = "${var.project_name}-alb-sg"
+  description = "ALB public sg"
+  vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "HTTP from internet"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -12,61 +12,42 @@ resource "aws_security_group" "alb_sg" {
   }
 
   egress {
-    description = "All outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = { Name = "${var.project_name}-alb-sg" }
 }
 
-resource "aws_security_group" "bastion_sg" {
-  name   = "${var.app_name}-bastion-sg"
-  vpc_id = aws_vpc.this.id
+# SG de tareas ECS: solo recibe del ALB al puerto del gateway
+resource "aws_security_group" "ecs_tasks_sg" {
+  name        = "${var.project_name}-ecs-tasks-sg"
+  description = "ECS tasks sg"
+  vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "SSH from my IP"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
-  }
-
-  egress {
-    description = "All outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# SG de la APP (EC2): puerto app solo desde ALB + SSH solo desde bastion
-resource "aws_security_group" "ec2_sg" {
-  name   = "${var.app_name}-ec2-sg"
-  vpc_id = aws_vpc.this.id
-
-  ingress {
-    description     = "App port from ALB only"
-    from_port       = var.app_port
-    to_port         = var.app_port
+    from_port       = var.gateway_container_port
+    to_port         = var.gateway_container_port
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
   }
 
+  # permite comunicación interna entre tareas (microservicios)
   ingress {
-    description     = "SSH from bastion only"
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [aws_security_group.bastion_sg.id]
+    from_port = 0
+    to_port   = 65535
+    protocol  = "tcp"
+    self      = true
   }
 
   egress {
-    description = "All outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = { Name = "${var.project_name}-ecs-tasks-sg" }
 }
