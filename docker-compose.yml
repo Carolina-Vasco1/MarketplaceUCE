@@ -1,6 +1,9 @@
 name: marketplaceuce
 
 services:
+  # =========================
+  # API GATEWAY
+  # =========================
   gateway:
     build:
       context: ./backend
@@ -17,6 +20,7 @@ services:
       ORDER_URL: http://order-service:8003
       PAYMENT_URL: http://payment-service:8004
       NOTIF_URL: http://notification-service:8005
+      BLOCKCHAIN_URL: http://blockchain-service:8006
 
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
       PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
@@ -32,8 +36,13 @@ services:
         condition: service_started
       notification-service:
         condition: service_started
+      blockchain-service:
+        condition: service_started
     restart: unless-stopped
 
+  # =========================
+  # AUTH SERVICE
+  # =========================
   auth-service:
     build:
       context: ./backend
@@ -60,6 +69,9 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # =========================
+  # PRODUCT SERVICE
+  # =========================
   product-service:
     build:
       context: ./backend
@@ -81,6 +93,9 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # =========================
+  # ORDER SERVICE
+  # =========================
   order-service:
     build:
       context: ./backend
@@ -89,7 +104,6 @@ services:
       - "8003:8003"
     environment:
       POSTGRES_URL: ${ORDER_POSTGRES_URL:-postgresql+asyncpg://order:order@postgres:5432/order_db}
-
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
 
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
@@ -101,6 +115,9 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # =========================
+  # PAYMENT SERVICE
+  # =========================
   payment-service:
     build:
       context: ./backend
@@ -122,6 +139,9 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # =========================
+  # NOTIFICATION SERVICE
+  # =========================
   notification-service:
     build:
       context: ./backend
@@ -144,6 +164,31 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # =========================
+  # BLOCKCHAIN SERVICE (NUEVO)
+  # =========================
+  blockchain-service:
+    build:
+      context: ./backend
+      dockerfile: services/blockchain-service/Dockerfile
+    ports:
+      - "8006:8006"
+    environment:
+      POSTGRES_URL: ${BLOCKCHAIN_POSTGRES_URL:-postgresql+asyncpg://blockchain:blockchain@postgres:5432/blockchain_db}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
+
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+
+  # =========================
+  # DATABASES & INFRA
+  # =========================
   postgres:
     image: postgres:16
     environment:
@@ -189,7 +234,6 @@ services:
     image: confluentinc/cp-zookeeper:7.6.1
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
     restart: unless-stopped
@@ -199,20 +243,17 @@ services:
     depends_on:
       - zookeeper
     ports:
-      # para tu host (si quieres probar desde Windows)
       - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
 
-      # dentro de Docker, los servicios deben usar kafka:29092
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
 
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     restart: unless-stopped
 
   rabbitmq:
@@ -230,13 +271,6 @@ services:
       - "9090:9090"
     command:
       - --config.file=/etc/prometheus/prometheus.yml
-    depends_on:
-      - gateway
-      - auth-service
-      - product-service
-      - order-service
-      - payment-service
-      - notification-service
     restart: unless-stopped
 
   grafana:
@@ -245,8 +279,6 @@ services:
       - "3000:3000"
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning
-    depends_on:
-      - prometheus
     restart: unless-stopped
 
 volumes:
