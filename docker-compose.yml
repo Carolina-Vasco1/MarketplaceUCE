@@ -1,6 +1,9 @@
 name: marketplaceuce
 
 services:
+  # --------------------------
+  # API Gateway
+  # --------------------------
   gateway:
     build:
       context: ./backend
@@ -13,22 +16,46 @@ services:
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
 
       AUTH_URL: http://auth-service:8001
+      USER_URL: http://user-service:8010
+
       PRODUCT_URL: http://product-service:8002
+      CATEGORY_URL: http://category-service:8011
+      REVIEW_URL: http://review-service:8012
+
       ORDER_URL: http://order-service:8003
       PAYMENT_URL: http://payment-service:8004
       NOTIF_URL: http://notification-service:8005
 
+      SEARCH_URL: http://search-service:8013
+      ADMIN_URL: http://admin-service:8014
+      REPORTING_URL: http://reporting-service:8015
+      AI_URL: http://ai-service:8016
+      BLOCKCHAIN_URL: http://blockchain-service:8017
+      AD_CONNECTOR_URL: http://ad-connector-service:8018
+
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
       PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
-      
+
     depends_on:
       - auth-service
+      - user-service
       - product-service
+      - category-service
+      - review-service
       - order-service
       - payment-service
       - notification-service
+      - search-service
+      - admin-service
+      - reporting-service
+      - ai-service
+      - blockchain-service
+      - ad-connector-service
     restart: unless-stopped
 
+  # --------------------------
+  # Auth Service (Postgres + Redis)
+  # --------------------------
   auth-service:
     build:
       context: ./backend
@@ -53,15 +80,34 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # --------------------------
+  # User Service (Postgres)
+  # --------------------------
+  user-service:
+    build:
+      context: ./backend
+      dockerfile: services/user-service/Dockerfile
+    environment:
+      POSTGRES_URL: ${USER_POSTGRES_URL:-postgresql+asyncpg://user:user@postgres:5432/user_db}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --------------------------
+  # Product Service (Mongo + Redis)
+  # --------------------------
   product-service:
     build:
       context: ./backend
       dockerfile: services/product-service/Dockerfile
     environment:
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
       JWT_ALG: ${JWT_ALG:-HS256}
-      MONGO_URL: ${MONGO_URL}
-      MONGO_DB: ${MONGO_DB}
+      MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
+      MONGO_DB: ${MONGO_DB:-marketUce}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     depends_on:
       mongo:
@@ -70,17 +116,69 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # --------------------------
+  # Category Service (Mongo o Postgres)
+  # - Si lo separaste del product-service
+  # --------------------------
+  category-service:
+    build:
+      context: ./backend
+      dockerfile: services/category-service/Dockerfile
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
+      MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
+      MONGO_DB: ${MONGO_DB:-marketUce}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --------------------------
+  # Review Service (Postgres)
+  # --------------------------
+  review-service:
+    build:
+      context: ./backend
+      dockerfile: services/review-service/Dockerfile
+    environment:
+      POSTGRES_URL: ${REVIEW_POSTGRES_URL:-postgresql+asyncpg://review:review@postgres:5432/review_db}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --------------------------
+  # Search Service (Mongo Atlas / Mongo local)
+  # --------------------------
+  search-service:
+    build:
+      context: ./backend
+      dockerfile: services/search-service/Dockerfile
+    environment:
+      MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
+      MONGO_DB: ${MONGO_DB:-marketUce}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --------------------------
+  # Order Service (Postgres + Kafka)
+  # --------------------------
   order-service:
     build:
       context: ./backend
       dockerfile: services/order-service/Dockerfile
-    
     ports:
-    - "8003:8003"
-    
+      - "8003:8003"
     environment:
       POSTGRES_URL: ${ORDER_POSTGRES_URL:-postgresql+asyncpg://order:order@postgres:5432/order_db}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,6 +186,9 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # --------------------------
+  # Payment Service (PayPal + Kafka)
+  # --------------------------
   payment-service:
     build:
       context: ./backend
@@ -106,6 +207,9 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # --------------------------
+  # Notification Service (Kafka + RabbitMQ)
+  # --------------------------
   notification-service:
     build:
       context: ./backend
@@ -113,6 +217,11 @@ services:
     environment:
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     depends_on:
       kafka:
         condition: service_started
@@ -120,6 +229,72 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # --------------------------
+  # Admin Service (Postgres)
+  # --------------------------
+  admin-service:
+    build:
+      context: ./backend
+      dockerfile: services/admin-service/Dockerfile
+    environment:
+      POSTGRES_URL: ${ADMIN_POSTGRES_URL:-postgresql+asyncpg://admin:admin@postgres:5432/admin_db}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --------------------------
+  # Reporting Service (Postgres)
+  # --------------------------
+  reporting-service:
+    build:
+      context: ./backend
+      dockerfile: services/reporting-service/Dockerfile
+    environment:
+      POSTGRES_URL: ${REPORT_POSTGRES_URL:-postgresql+asyncpg://report:report@postgres:5432/report_db}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --------------------------
+  # AI Service (opcional)
+  # --------------------------
+  ai-service:
+    build:
+      context: ./backend
+      dockerfile: services/ai-service/Dockerfile
+    environment:
+      AI_PROVIDER: ${AI_PROVIDER:-none}
+    restart: unless-stopped
+
+  # --------------------------
+  # Blockchain Service (opcional)
+  # --------------------------
+  blockchain-service:
+    build:
+      context: ./backend
+      dockerfile: services/blockchain-service/Dockerfile
+    environment:
+      CHAIN_ENV: ${CHAIN_ENV:-local}
+    restart: unless-stopped
+
+  # --------------------------
+  # Ad Connector Service (opcional)
+  # --------------------------
+  ad-connector-service:
+    build:
+      context: ./backend
+      dockerfile: services/ad-connector-service/Dockerfile
+    environment:
+      AD_PROVIDER: ${AD_PROVIDER:-none}
+    restart: unless-stopped
+
+  # --------------------------
+  # Infra: Postgres
+  # --------------------------
   postgres:
     image: postgres:16
     environment:
@@ -137,6 +312,9 @@ services:
       retries: 30
     restart: unless-stopped
 
+  # --------------------------
+  # Infra: Mongo
+  # --------------------------
   mongo:
     image: mongo:7
     ports:
@@ -150,6 +328,9 @@ services:
       retries: 30
     restart: unless-stopped
 
+  # --------------------------
+  # Infra: Redis
+  # --------------------------
   redis:
     image: redis:7
     ports:
@@ -161,6 +342,9 @@ services:
       retries: 30
     restart: unless-stopped
 
+  # --------------------------
+  # Infra: Zookeeper + Kafka
+  # --------------------------
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     environment:
@@ -189,6 +373,9 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     restart: unless-stopped
 
+  # --------------------------
+  # Infra: RabbitMQ
+  # --------------------------
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -196,6 +383,9 @@ services:
       - "15672:15672"
     restart: unless-stopped
 
+  # --------------------------
+  # Observability
+  # --------------------------
   prometheus:
     image: prom/prometheus:v2.55.0
     volumes:
@@ -206,11 +396,6 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
     depends_on:
       - gateway
-      - auth-service
-      - product-service
-      - order-service
-      - payment-service
-      - notification-service
     restart: unless-stopped
 
   grafana:
