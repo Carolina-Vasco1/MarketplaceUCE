@@ -8,78 +8,72 @@ variable "project_name" {
   default = "marketplaceuce"
 }
 
-variable "env" {
+variable "vpc_cidr" {
   type    = string
-  default = "dev"
+  default = "10.20.0.0/16"
 }
 
-# Tus imágenes en ECR (tag latest por defecto)
-variable "images" {
-  type = map(string)
-  default = {
-    gateway            = "gateway:latest"
-    auth_service       = "auth-service:latest"
-    product_service    = "product-service:latest"
-    order_service      = "order-service:latest"
-    payment_service    = "payment-service:latest"
-    notification_service = "notification-service:latest"
-    blockchain_service = "blockchain-service:latest"
-    frontend           = "frontend:latest"
-  }
+variable "public_subnets" {
+  type    = list(string)
+  default = ["10.20.1.0/24", "10.20.2.0/24"]
 }
 
-# Puertos internos (contenedor)
-variable "ports" {
-  type = map(number)
-  default = {
-    gateway              = 8000
-    auth_service         = 8001
-    product_service      = 8002
-    order_service        = 8003
-    payment_service      = 8004
-    notification_service = 8005
-    blockchain_service   = 8006
-    frontend             = 80
-  }
+variable "private_subnets" {
+  type    = list(string)
+  default = ["10.20.11.0/24", "10.20.12.0/24"]
 }
 
-# ==== Config de entorno (NO metas secretos aquí si puedes evitarlo) ====
+# Para que el front (Vercel o tu dominio) pueda consumir el API
+variable "frontend_origin" {
+  type    = string
+  default = "http://localhost:5173"
+}
+
+# CPU/Mem por servicio
+variable "task_cpu" {
+  type    = number
+  default = 256
+}
+
+variable "task_memory" {
+  type    = number
+  default = 512
+}
+
+# Puerto expuesto por el gateway internamente
+variable "gateway_container_port" {
+  type    = number
+  default = 8000
+}
+
+# puertos internos de servicios (solo ECS)
+variable "auth_port"          { type = number default = 8001 }
+variable "product_port"       { type = number default = 8002 }
+variable "order_port"         { type = number default = 8003 }
+variable "payment_port"       { type = number default = 8004 }
+variable "notification_port"  { type = number default = 8005 }
+variable "blockchain_port"    { type = number default = 8006 }
+
+# Variables sensibles (puedes dejarlas vacías y luego setear en ECS)
 variable "jwt_secret" {
   type      = string
   sensitive = true
+  default   = "dev_secret_change_me"
 }
 
-variable "frontend_origin" {
-  type    = string
-  default = "http://localhost"
-}
-
-# URLs internas (en ECS se resuelven por DNS del service discovery o ALB interno)
-# aquí las dejamos como variables para que puedas cambiarlas.
 variable "paypal_client_id" {
   type      = string
   sensitive = true
   default   = ""
 }
+
+variable "paypal_client_secret" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
 variable "paypal_env" {
   type    = string
   default = "sandbox"
-}
-
-# Infra URLs (si lo corres fuera o dentro)
-variable "mongo_url" {
-  type    = string
-  default = ""
-}
-variable "mongo_db" {
-  type    = string
-  default = "marketUce"
-}
-variable "redis_url" {
-  type    = string
-  default = ""
-}
-variable "kafka_bootstrap" {
-  type    = string
-  default = ""
 }
