@@ -14,11 +14,9 @@ def health():
 
 @app.on_event("startup")
 async def _startup():
-    # ✅ 1) crear tablas
     await init_db()
     print("[ORDER] DB init ✅")
 
-    # ✅ 2) conectar kafka con reintentos (sin tumbar el servicio)
     max_tries = 20
     delay = 2
     connected = False
@@ -34,7 +32,6 @@ async def _startup():
             await asyncio.sleep(delay)
 
     if not connected:
-        # 👇 NO hacemos raise. El servicio queda vivo y /health funciona.
         print("[ORDER] Kafka still not available. Service will run without Kafka for now.")
 
 @app.on_event("shutdown")
