@@ -90,7 +90,6 @@ services:
     environment:
       POSTGRES_URL: ${ORDER_POSTGRES_URL:-postgresql+asyncpg://order:order@postgres:5432/order_db}
 
-      # Dentro de docker usa kafka:29092
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
 
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
