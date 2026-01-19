@@ -1,6 +1,7 @@
 import asyncio
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
+from .routes.orders import router as orders_router, compat, bus
 
 from .routes.orders import router as orders_router, bus
 from .db.session import init_db
@@ -40,5 +41,8 @@ async def _shutdown():
         await bus.stop()
     except Exception as e:
         print("[ORDER] Error stopping Kafka:", repr(e))
+
+app.include_router(orders_router)
+app.include_router(compat)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
