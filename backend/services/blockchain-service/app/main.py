@@ -1,39 +1,44 @@
+import asyncio
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.core.config import settings
-from app.routes import transactions, contracts, wallet
+from app.db.session import init_db
+from app.routes.ledger import router as ledger_router
+from app.consumers.kafka_consumer import BlockchainConsumer
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("Blockchain Service starting...")
-    yield
-    print("Blockchain Service shutting down...")
+app = FastAPI(title="Blockchain Service", version="1.0.0")
 
-app = FastAPI(
-    title="Blockchain Service",
-    description="Microservicio blockchain - Transacciones, Smart Contracts, Wallets",
-    version="1.0.0",
-    lifespan=lifespan
-)
+app.include_router(ledger_router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["transactions"])
-app.include_router(contracts.router, prefix="/api/v1/contracts", tags=["contracts"])
-app.include_router(wallet.router, prefix="/api/v1/wallet", tags=["wallet"])
+consumer = BlockchainConsumer()
 
 @app.get("/health")
-async def health_check():
+def health():
     return {"status": "ok", "service": "blockchain-service"}
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8009)
+@app.on_event("startup")
+async def startup():
+    await init_db()
+    print("[BLOCKCHAIN] DB init ✅")
+
+    max_tries = 30
+    delay = 2
+
+    for i in range(1, max_tries + 1):
+        try:
+            await consumer.start()
+            asyncio.create_task(consumer.run_forever())
+            print(f"[BLOCKCHAIN] Kafka connected ✅ (try {i})")
+            break
+        except Exception as e:
+            print(f"[BLOCKCHAIN] Kafka not ready (try {i}/{max_tries}): {repr(e)}")
+            await asyncio.sleep(delay)
+
+@app.on_event("shutdown")
+async def shutdown():
+    try:
+        await consumer.stop()
+    except Exception as e:
+        print("[BLOCKCHAIN] stop error:", repr(e))
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
