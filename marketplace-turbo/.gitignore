@@ -36,3 +36,22 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+
+# State files (SENSIBLES)
+**/*.tfstate
+**/*.tfstate.*
+**/terraform.tfstate
+**/terraform.tfstate.backup
+
+# Plan files
+**/*.tfplan
+**/tfplan
+
+# Crash logs
+crash.log
+crash.*.log
