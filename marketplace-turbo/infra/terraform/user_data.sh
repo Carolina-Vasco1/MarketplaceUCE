@@ -1,39 +1,38 @@
 #!/bin/bash
 set -e
 
-dnf update -y
-dnf install -y docker git
+# logs
+exec > >(tee /var/log/user-data.log) 2>&1
+
+yum update -y
+
+# instalar docker
+amazon-linux-extras install docker -y || true
+yum install -y docker git
+
 systemctl enable docker
 systemctl start docker
+usermod -aG docker ec2-user
 
-# docker compose plugin
-dnf install -y docker-compose-plugin
+# docker compose v2
+mkdir -p /usr/local/lib/docker/cli-plugins
+curl -SL https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64 \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-cd /opt
-rm -rf MarketplaceUCE || true
+# clonar repo
+cd /home/ec2-user
+if [ -n "${GIT_REPO_URL}" ]; then
+  rm -rf app || true
+  git clone -b "${GIT_BRANCH}" "${GIT_REPO_URL}" app
+else
+  echo "GIT_REPO_URL not set. Skipping clone."
+  exit 1
+fi
 
-# ✅ Tu repo real + branch QA
-git clone -b qa https://github.com/Carolina-Vasco1/MarketplaceUCE.git
-cd MarketplaceUCE
+cd /home/ec2-user/app
 
-# ✅ Generar .env para backend (AJUSTA ESTOS VALORES)
-cat > .env <<'EOF'
-JWT_SECRET=CAMBIA_ESTE_JWT_SECRET_ULTRA_LARGO_Y_SEGURO
-FRONTEND_ORIGIN=https://TU-FRONTEND.vercel.app
-
-PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com
-PAYPAL_CLIENT_ID=TU_PAYPAL_SANDBOX_CLIENT_ID_REAL
-PAYPAL_CLIENT_SECRET=TU_PAYPAL_SANDBOX_CLIENT_SECRET_REAL
-PAYPAL_WEBHOOK_ID=
-
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=jasanchezc3@gmail.com
-SMTP_PASSWORD=APP_PASSWORD_NUEVA_DE_GMAIL
-SMTP_FROM=Marketplace UCE <jasanchezc3@gmail.com>
-EOF
-
+# levantar compose
 docker compose up -d --build
 
-docker ps -a > /opt/containers_status.txt
-docker compose logs --tail=200 > /opt/compose_logs_tail.txt
+docker ps

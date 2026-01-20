@@ -4,7 +4,7 @@ resource "aws_lb" "alb" {
   security_groups    = [aws_security_group.alb_sg.id]
   subnets            = [for s in aws_subnet.public : s.id]
 
-  tags = { Name = "${var.project_name}-alb" }
+  tags = merge(local.tags, { Name = "${var.project_name}-alb" })
 }
 
 resource "aws_lb_target_group" "gateway_tg" {

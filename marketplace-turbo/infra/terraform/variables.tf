@@ -8,72 +8,55 @@ variable "project_name" {
   default = "marketplaceuce"
 }
 
+variable "env" {
+  type    = string
+  default = "lab"
+}
+
+# Networking
 variable "vpc_cidr" {
   type    = string
-  default = "10.20.0.0/16"
+  default = "10.0.0.0/16"
 }
 
 variable "public_subnets" {
   type    = list(string)
-  default = ["10.20.1.0/24", "10.20.2.0/24"]
+  default = ["10.0.1.0/24", "10.0.2.0/24"]
 }
 
 variable "private_subnets" {
   type    = list(string)
-  default = ["10.20.11.0/24", "10.20.12.0/24"]
+  default = ["10.0.11.0/24", "10.0.12.0/24"]
 }
 
-# Para que el front (Vercel o tu dominio) pueda consumir el API
-variable "frontend_origin" {
+# EC2
+variable "instance_type" {
   type    = string
-  default = "http://localhost:5173"
+  default = "t3.medium"
 }
 
-# CPU/Mem por servicio
-variable "task_cpu" {
-  type    = number
-  default = 256
+variable "key_name" {
+  type    = string
+  default = "" # pon tu KeyPair si usaras SSH
 }
 
-variable "task_memory" {
-  type    = number
-  default = 512
+# Proyecto (repo)
+variable "git_repo_url" {
+  type    = string
+  default = "" # ejemplo: https://github.com/tuUsuario/marketplaceUCE.git
 }
 
-# Puerto expuesto por el gateway internamente
+variable "git_branch" {
+  type    = string
+  default = "main"
+}
+
 variable "gateway_container_port" {
   type    = number
   default = 8000
 }
 
-# puertos internos de servicios (solo ECS)
-variable "auth_port"          { type = number default = 8001 }
-variable "product_port"       { type = number default = 8002 }
-variable "order_port"         { type = number default = 8003 }
-variable "payment_port"       { type = number default = 8004 }
-variable "notification_port"  { type = number default = 8005 }
-variable "blockchain_port"    { type = number default = 8006 }
-
-# Variables sensibles (puedes dejarlas vacías y luego setear en ECS)
-variable "jwt_secret" {
-  type      = string
-  sensitive = true
-  default   = "dev_secret_change_me"
-}
-
-variable "paypal_client_id" {
-  type      = string
-  sensitive = true
-  default   = ""
-}
-
-variable "paypal_client_secret" {
-  type      = string
-  sensitive = true
-  default   = ""
-}
-
-variable "paypal_env" {
-  type    = string
-  default = "sandbox"
+variable "frontend_port" {
+  type    = number
+  default = 80
 }
