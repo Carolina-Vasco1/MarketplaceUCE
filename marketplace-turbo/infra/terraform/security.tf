@@ -34,6 +34,18 @@ resource "aws_security_group" "ecs_tasks_sg" {
     security_groups = [aws_security_group.alb_sg.id]
   }
 
+  # ✅ Admin/debug SOLO desde Bastion (opcional)
+  dynamic "ingress" {
+    for_each = var.enable_bastion ? [1] : []
+    content {
+      description     = "Admin from Bastion"
+      from_port       = 0
+      to_port         = 65535
+      protocol        = "tcp"
+      security_groups = [aws_security_group.bastion_sg[0].id]
+    }
+  }
+
   egress {
     from_port   = 0
     to_port     = 0

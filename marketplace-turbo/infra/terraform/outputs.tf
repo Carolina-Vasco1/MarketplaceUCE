@@ -3,8 +3,7 @@ output "alb_dns_name" {
 }
 
 output "gateway_url" {
-  value = "http://${aws_instance.app.public_dns}:${var.gateway_container_port}"
-
+  value = "http://${aws_lb.alb.dns_name}"
 }
 
 output "vpc_id" {
@@ -15,3 +14,6 @@ output "ecs_cluster_name" {
   value = data.aws_ecs_cluster.cluster.cluster_name
 }
 
+output "bastion_public_ip" {
+  value = var.enable_bastion ? aws_instance.bastion[0].public_ip : null
+}
