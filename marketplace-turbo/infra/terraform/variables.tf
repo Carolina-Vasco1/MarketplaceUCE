@@ -60,3 +60,52 @@ variable "frontend_port" {
   type    = number
   default = 80
 }
+
+# =========================
+# Bastion
+# =========================
+
+variable "enable_bastion" {
+  type    = bool
+  default = true
+}
+
+
+variable "bastion_instance_type" {
+  type    = string
+  default = "t3.micro"
+}
+
+variable "my_ip_cidr" {
+  type        = string
+  description = "Tu IP publica en /32 para permitir SSH al bastion (ej: 190.x.x.x/32)"
+  default     = "0.0.0.0/0"
+}
+
+variable "frontend_origin" {
+  type    = string
+  default = "http://localhost:5173"
+}
+
+variable "paypal_client_secret" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "jwt_secret" {
+  type      = string
+  sensitive = true
+  default   = "dev_secret_change_me"
+}
+
+variable "paypal_client_id" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "paypal_env" {
+  type    = string
+  default = "sandbox"
+}

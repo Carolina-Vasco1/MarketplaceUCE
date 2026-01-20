@@ -1,22 +1,3 @@
-# =========================
-# Bastion Host (Admin only)
-# =========================
-
-variable "enable_bastion" {
-  type    = bool
-  default = true
-}
-
-variable "my_ip_cidr" {
-  type        = string
-  description = "Tu IP pública en /32 (ej: 190.xxx.xxx.xxx/32) para permitir SSH al bastion"
-  default     = "0.0.0.0/0"
-}
-
-variable "bastion_instance_type" {
-  type    = string
-  default = "t3.micro"
-}
 
 data "aws_ami" "al2023_bastion" {
   most_recent = true
@@ -63,10 +44,3 @@ resource "aws_instance" "bastion" {
   tags = merge(local.tags, { Name = "${local.name}-bastion" })
 }
 
-output "bastion_public_ip" {
-  value = var.enable_bastion ? aws_instance.bastion[0].public_ip : null
-}
-
-output "bastion_ssh" {
-  value = var.enable_bastion ? "ssh -i <TU_PEM>.pem ec2-user@${aws_instance.bastion[0].public_ip}" : null
-}

@@ -11,9 +11,13 @@ output "vpc_id" {
 }
 
 output "ecs_cluster_name" {
-  value = data.aws_ecs_cluster.cluster.cluster_name
+  value = aws_ecs_cluster.cluster.name
 }
 
 output "bastion_public_ip" {
   value = var.enable_bastion ? aws_instance.bastion[0].public_ip : null
+}
+
+output "bastion_ssh" {
+  value = var.enable_bastion ? "ssh -i <TU_PEM>.pem ec2-user@${aws_instance.bastion[0].public_ip}" : null
 }
