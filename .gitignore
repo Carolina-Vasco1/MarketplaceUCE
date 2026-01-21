@@ -15,3 +15,16 @@ build/
 # OS
 .DS_Store
 
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+**/tfplan
+**/terraform.tfstate
+**/terraform.tfstate.backup
+
+# Logs
+*.log
+docker_errors.log
