@@ -21,3 +21,7 @@ output "bastion_public_ip" {
 output "bastion_ssh" {
   value = var.enable_bastion ? "ssh -i <TU_PEM>.pem ec2-user@${aws_instance.bastion[0].public_ip}" : null
 }
+
+output "app_private_ip" {
+  value = aws_instance.app.private_ip
+}

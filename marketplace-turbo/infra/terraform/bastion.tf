@@ -1,4 +1,3 @@
-
 data "aws_ami" "al2023_bastion" {
   most_recent = true
   owners      = ["amazon"]
@@ -43,4 +42,3 @@ resource "aws_instance" "bastion" {
 
   tags = merge(local.tags, { Name = "${local.name}-bastion" })
 }
-

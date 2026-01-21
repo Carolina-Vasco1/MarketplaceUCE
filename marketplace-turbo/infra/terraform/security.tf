@@ -34,7 +34,6 @@ resource "aws_security_group" "ecs_tasks_sg" {
     security_groups = [aws_security_group.alb_sg.id]
   }
 
-  # ✅ Admin/debug SOLO desde Bastion (opcional)
   dynamic "ingress" {
     for_each = var.enable_bastion ? [1] : []
     content {

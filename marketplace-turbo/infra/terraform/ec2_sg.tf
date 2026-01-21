@@ -3,7 +3,7 @@ resource "aws_security_group" "app_sg" {
   description = "EC2 app security group"
   vpc_id      = aws_vpc.main.id
 
-  # SSH SOLO desde el Bastion
+  # SSH SOLO desde Bastion
   ingress {
     description     = "SSH from Bastion only"
     from_port       = 22
@@ -12,13 +12,13 @@ resource "aws_security_group" "app_sg" {
     security_groups = var.enable_bastion ? [aws_security_group.bastion_sg[0].id] : []
   }
 
-  # HTTP solo si necesitas entrar directo a la EC2 (yo recomendaría NO)
+  # Gateway SOLO desde el ALB (puerto 8000)
   ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "Gateway from ALB"
+    from_port       = var.gateway_container_port
+    to_port         = var.gateway_container_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
   }
 
   egress {
