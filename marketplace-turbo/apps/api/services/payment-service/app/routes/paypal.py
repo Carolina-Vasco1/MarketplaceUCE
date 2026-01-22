@@ -10,10 +10,6 @@ router = APIRouter(prefix="/api/v1/paypal", tags=["paypal"])
 
 
 def get_paypal_client() -> PayPalHttpClient:
-    """
-    Crea el cliente en runtime (no en import-time).
-    Soporta sandbox o live según PAYPAL_ENV.
-    """
     if not settings.PAYPAL_CLIENT_ID or not settings.PAYPAL_CLIENT_SECRET:
         raise HTTPException(
             status_code=500,
@@ -47,7 +43,6 @@ class CaptureOrderIn(BaseModel):
 
 @router.get("/health")
 async def paypal_health():
-    # Endpoint único de health (NO duplicar)
     return {
         "ok": True,
         "service": "payment-service",
@@ -108,3 +103,4 @@ async def capture_order(body: CaptureOrderIn):
         return {"status": res.result.status, "id": getattr(res.result, "id", body.order_id)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PayPal capture-order error: {str(e)}")
+

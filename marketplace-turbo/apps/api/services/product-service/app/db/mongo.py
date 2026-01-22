@@ -28,7 +28,6 @@ def get_audit_logs_collection():
     return get_db()["audit_logs"]
 
 
-# (Opcional) Si tu código viejo importa variables directas:
 products = get_products_collection()
 categories = get_categories_collection()
 audit_logs = get_audit_logs_collection()

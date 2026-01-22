@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import Optional, List
 import uuid
 import json
 
@@ -37,23 +37,32 @@ async def redis_del_safe(key: str) -> None:
 
 
 def doc_to_productout(d: dict) -> ProductOut:
-    """Convierte doc Mongo a ProductOut sin reventar por campos faltantes."""
+    """Convierte doc Mongo a ProductOut con defaults compatibles con tu schema real."""
     pid = str(d.get("_id"))
     payload = {k: v for k, v in d.items() if k != "_id"}
 
-    # Defaults para evitar errores si faltan campos
+    # ✅ Defaults según ProductOut (ProductIn + id + status)
     payload.setdefault("title", "")
     payload.setdefault("description", "")
-    payload.setdefault("price", 0)
+    payload.setdefault("price", 0.0)
+    payload.setdefault("category_id", "general")
+    payload.setdefault("seller_id", "")
+    payload.setdefault("images", [])
     payload.setdefault("status", "active")
-    payload.setdefault("seller_id", None)
-    payload.setdefault("image_url", None)
 
-    # price siempre float
+    # ✅ price float
     try:
         payload["price"] = float(payload.get("price", 0))
     except Exception:
         payload["price"] = 0.0
+
+    # ✅ images lista
+    imgs = payload.get("images", [])
+    if imgs is None:
+        imgs = []
+    if not isinstance(imgs, list):
+        imgs = [imgs]
+    payload["images"] = imgs
 
     return ProductOut(id=pid, **payload)
 
@@ -113,6 +122,55 @@ async def get_product(product_id: str):
     return out
 
 
+# -----------------------------
+# ✅ NUEVO: PATCH para EDITAR PRODUCTO (title/description/price/category_id/images)
+# -----------------------------
+class ProductUpdateIn(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = Field(default=None, gt=0)
+    category_id: Optional[str] = None
+    images: Optional[List[str]] = None
+
+
+@router.patch("/{product_id}", response_model=ProductOut)
+async def update_product(product_id: str, body: ProductUpdateIn):
+    col = get_products_collection()
+    audit = get_audit_logs_collection()
+
+    doc = await col.find_one({"_id": product_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    data = body.model_dump(exclude_unset=True)
+
+    if not data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    # ✅ normaliza images
+    if "images" in data:
+        if data["images"] is None:
+            data["images"] = []
+        if not isinstance(data["images"], list):
+            data["images"] = [data["images"]]
+
+    await col.update_one({"_id": product_id}, {"$set": data})
+
+    await audit.insert_one(
+        {
+            "action": "PRODUCT_UPDATED",
+            "product_id": product_id,
+            "seller_id": doc.get("seller_id"),
+            "updated_fields": list(data.keys()),
+        }
+    )
+
+    await redis_del_safe(cache_key(product_id))
+
+    doc2 = await col.find_one({"_id": product_id})
+    return doc_to_productout(doc2)
+
+
 class UpdateStatusIn(BaseModel):
     status: str
 
@@ -141,8 +199,8 @@ async def update_status(product_id: str, body: UpdateStatusIn):
 
     await redis_del_safe(cache_key(product_id))
 
-    doc = await col.find_one({"_id": product_id})
-    return doc_to_productout(doc)
+    doc2 = await col.find_one({"_id": product_id})
+    return doc_to_productout(doc2)
 
 
 @router.delete("/{product_id}")

@@ -10,7 +10,7 @@ def _copy_headers(request: Request) -> dict:
     headers = dict(request.headers)
     headers.pop("host", None)
     return headers
-    
+
 @router.api_route(
     "/{path:path}",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

@@ -55,3 +55,12 @@ yarn-error.log*
 # Crash logs
 crash.log
 crash.*.log
+
+# Logs
+*.log
+docker_errors.log
+
+**/.terraform/*
+**/.terraform.lock.hcl
+**/*.tfplan
+**/tfplan

@@ -1,39 +1,30 @@
 from fastapi import APIRouter, Request, Response
 import httpx
 
-from ..core.config import settings
+from app.core.config import settings
 
+router = APIRouter(prefix="/order", tags=["orders-proxy"])
+METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
-router = APIRouter(tags=["orders-proxy"])
+@router.api_route("/{path:path}", methods=METHODS)
+async def orders_proxy(request: Request, path: str) -> Response:
+    upstream = settings.ORDER_URL.rstrip("/")
+    new_path = "/" + path.lstrip("/")
 
-async def _forward(request: Request, upstream: str) -> Response:
+    headers = dict(request.headers)
+    headers.pop("host", None)
+
     async with httpx.AsyncClient(timeout=30.0) as client:
-        headers = dict(request.headers)
-        headers.pop("host", None)
-
         r = await client.request(
-            request.method,
-            f"{upstream}{request.url.path}",
-            params=request.query_params,
+            method=request.method,
+            url=f"{upstream}{new_path}",
+            params=request.query_params,  # ✅ correcto
             content=await request.body(),
             headers=headers,
         )
 
-        resp_headers = dict(r.headers)
-        resp_headers.pop("transfer-encoding", None)
-        resp_headers.pop("connection", None)
+    resp_headers = dict(r.headers)
+    resp_headers.pop("transfer-encoding", None)
+    resp_headers.pop("connection", None)
 
-        return Response(
-            content=r.content,
-            status_code=r.status_code,
-            headers=resp_headers,
-        )
-
-@router.api_route("/api/v1/orders", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
-@router.api_route("/api/v1/orders/", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
-async def orders_root(request: Request):
-    return await _forward(request, settings.ORDER_URL)
-
-@router.api_route("/api/v1/orders/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
-async def orders_subpath(request: Request, path: str):
-    return await _forward(request, settings.ORDER_URL)
+    return Response(content=r.content, status_code=r.status_code, headers=resp_headers)
