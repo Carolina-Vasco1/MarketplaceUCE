@@ -2,6 +2,25 @@ name: marketplaceuce
 
 services:
   # =========================
+  # FRONTEND (DEV - VITE)
+  # =========================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  # =========================
   # API GATEWAY
   # =========================
   gateway:
@@ -24,7 +43,6 @@ services:
 
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
       PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
-
     depends_on:
       auth-service:
         condition: service_started
@@ -52,11 +70,9 @@ services:
     environment:
       POSTGRES_URL: ${AUTH_POSTGRES_URL:-postgresql+asyncpg://auth:auth@postgres:5432/auth_db}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
       JWT_ALG: ${JWT_ALG:-HS256}
       JWT_EXPIRES_MIN: ${JWT_EXPIRES_MIN:-1440}
-
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
@@ -81,10 +97,8 @@ services:
     environment:
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
       JWT_ALG: ${JWT_ALG:-HS256}
-
       MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
       MONGO_DB: ${MONGO_DB:-marketUce}
-
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     depends_on:
       mongo:
@@ -105,14 +119,13 @@ services:
     environment:
       POSTGRES_URL: ${ORDER_POSTGRES_URL:-postgresql+asyncpg://order:order@postgres:5432/order_db}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
-
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
       JWT_ALG: ${JWT_ALG:-HS256}
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   # =========================
@@ -126,17 +139,16 @@ services:
       - "8004:8004"
     environment:
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
-
       PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
       PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
-
+      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
       JWT_ALG: ${JWT_ALG:-HS256}
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   # =========================
@@ -151,7 +163,6 @@ services:
     environment:
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
-
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
@@ -159,13 +170,13 @@ services:
       SMTP_FROM: ${SMTP_FROM:-Marketplace UCE <no-reply@marketplaceuce.local>}
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
         condition: service_started
     restart: unless-stopped
 
   # =========================
-  # BLOCKCHAIN SERVICE (NUEVO)
+  # BLOCKCHAIN SERVICE
   # =========================
   blockchain-service:
     build:
@@ -174,16 +185,15 @@ services:
     ports:
       - "8006:8006"
     environment:
-      POSTGRES_URL: ${BLOCKCHAIN_POSTGRES_URL:-postgresql+asyncpg://blockchain:blockchain@postgres:5432/blockchain_db}
+      POSTGRES_URL: ${BLOCKCHAIN_POSTGRES_URL:-postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
-
       JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
       JWT_ALG: ${JWT_ALG:-HS256}
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   # =========================
@@ -247,13 +257,16 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:29092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 25
     restart: unless-stopped
 
   rabbitmq:
@@ -267,7 +280,7 @@ services:
     image: prom/prometheus:v2.55.0
     volumes:
       - ./backend/infra/prometheus:/etc/prometheus:ro
-    ports:
+    poArts:
       - "9090:9090"
     command:
       - --config.file=/etc/prometheus/prometheus.yml

@@ -33,3 +33,12 @@ export async function uploadProductImage(file: File) {
   const r = await http.post<{ url: string }>("/products/upload/image", form);
   return r.data.url;
 }
+
+// ✅ UPDATE REAL (tu backend lo soporta ahora)
+export async function updateProduct(
+  id: string,
+  payload: Partial<Pick<Product, "title" | "description" | "price" | "category_id" | "images">>
+) {
+  const r = await http.patch<Product>(`/products/${id}`, payload);
+  return r.data;
+}

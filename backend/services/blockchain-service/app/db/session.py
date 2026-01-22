@@ -1,14 +1,25 @@
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+
 from app.core.config import settings
 
-engine = create_async_engine(settings.POSTGRES_URL, echo=False)
-SessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
+Base = declarative_base()
 
-class Base(DeclarativeBase):
-    pass
+engine = create_async_engine(
+    settings.POSTGRES_URL,
+    echo=False,
+    pool_pre_ping=True,
+)
+
+async_session = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 async def init_db():
-    from app.db.models import LedgerBlock  # noqa
+
+    from app.db import models  # noqa: F401
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

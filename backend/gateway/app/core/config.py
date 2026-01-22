@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     ENV: str = "local"
@@ -12,7 +12,6 @@ class Settings(BaseSettings):
     PAYMENT_URL: str = "http://payment-service:8004"
     NOTIF_URL: str = "http://notification-service:8005"
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

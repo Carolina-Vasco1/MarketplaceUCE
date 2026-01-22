@@ -1,0 +1,208 @@
+name: marketplaceuce-qa
+
+services:
+  # =========================
+  # API GATEWAY (EXPOSED)
+  # =========================
+  gateway:
+    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/gateway:qa
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # URLs internas entre contenedores (red Docker)
+      AUTH_URL: http://auth-service:8001
+      PRODUCT_URL: http://product-service:8002
+      ORDER_URL: http://order-service:8003
+      PAYMENT_URL: http://payment-service:8004
+      NOTIF_URL: http://notification-service:8005
+      BLOCKCHAIN_URL: http://blockchain-service:8006
+    depends_on:
+      auth-service:
+        condition: service_started
+      product-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+      blockchain-service:
+        condition: service_started
+    restart: unless-stopped
+
+  # =========================
+  # AUTH SERVICE
+  # =========================
+  auth-service:
+    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/auth-service:qa
+    env_file:
+      - .env
+    environment:
+      POSTGRES_URL: ${AUTH_POSTGRES_URL:-postgresql+asyncpg://auth:auth@postgres:5432/auth_db}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      # JWT_* y SMTP_* vienen desde .env
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # =========================
+  # PRODUCT SERVICE
+  # =========================
+  product-service:
+    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/product-service:qa
+    env_file:
+      - .env
+    environment:
+      MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
+      MONGO_DB: ${MONGO_DB:-marketUce}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      # JWT_* viene desde .env
+    depends_on:
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # =========================
+  # ORDER SERVICE
+  # =========================
+  order-service:
+    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/order-service:qa
+    env_file:
+      - .env
+    environment:
+      POSTGRES_URL: ${ORDER_POSTGRES_URL:-postgresql+asyncpg://order:order@postgres:5432/order_db}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
+      # JWT_* viene desde .env
+    depends_on:
+      postgres:
+        condition: service_started
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+
+  # =========================
+  # PAYMENT SERVICE
+  # =========================
+  payment-service:
+    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/payment-service:qa
+    env_file:
+      - .env
+    environment:
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
+      PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
+      PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
+      # PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET / PAYPAL_WEBHOOK_ID vienen desde .env
+      # JWT_* viene desde .env
+    depends_on:
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+
+  # =========================
+  # NOTIFICATION SERVICE
+  # =========================
+  notification-service:
+    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/notification-service:qa
+    env_file:
+      - .env
+    environment:
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      # SMTP_USER / SMTP_PASSWORD / SMTP_FROM vienen desde .env
+    depends_on:
+      kafka:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    restart: unless-stopped
+
+  # =========================
+  # BLOCKCHAIN SERVICE
+  # =========================
+  blockchain-service:
+    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/blockchain-service:qa
+    env_file:
+      - .env
+    environment:
+      POSTGRES_URL: ${BLOCKCHAIN_POSTGRES_URL:-postgresql+asyncpg://postgres:postgres@postgres:5432/postgres}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
+      # JWT_* viene desde .env
+    depends_on:
+      postgres:
+        condition: service_started
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+
+  # =========================
+  # DATABASES & INFRA
+  # =========================
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432" # opcional; para debug. Puedes quitarlo en prod.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017" # opcional; para debug. Puedes quitarlo en prod.
+    volumes:
+      - mongodata:/data/db
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379" # opcional
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181" # opcional
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      zookeeper:
+        condition: service_started
+    ports:
+      - "9092:9092" # opcional (host); en AWS puedes quitarlo
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"   # opcional
+      - "15672:15672" # opcional
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  mongodata:

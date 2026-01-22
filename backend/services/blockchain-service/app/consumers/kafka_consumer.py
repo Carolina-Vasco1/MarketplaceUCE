@@ -1,75 +1,72 @@
+import asyncio
 import json
-import time
-import hashlib
+import traceback
 from aiokafka import AIOKafkaConsumer
-from sqlalchemy import select, desc
+
 from app.core.config import settings
-from app.db.session import SessionLocal
-from app.db.models import LedgerBlock
+from app.services.ledger_service import LedgerService
 
-GENESIS_PREV = "0" * 64
-
-def sha256_hex(s: str) -> str:
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()
-
-def compute_block_hash(index: int, prev_hash: str, topic: str, event_type: str, ts_ms: int, payload_json: str) -> str:
-    base = f"{index}|{prev_hash}|{topic}|{event_type}|{ts_ms}|{payload_json}"
-    return sha256_hex(base)
 
 class BlockchainConsumer:
     def __init__(self):
-        topics = [t.strip() for t in settings.KAFKA_TOPICS.split(",") if t.strip()]
-        self.topics = topics
+        self.enabled = False
         self.consumer = AIOKafkaConsumer(
-            *topics,
+            "payment.completed",
             bootstrap_servers=settings.KAFKA_BOOTSTRAP,
-            group_id="blockchain-ledger",
+            group_id="blockchain-service",
             auto_offset_reset="earliest",
             enable_auto_commit=True,
         )
+        self.ledger = LedgerService()
 
     async def start(self):
-        await self.consumer.start()
-        print(f"[BLOCKCHAIN] Kafka consumer started topics={self.topics}")
+        # Reintentos para cuando Kafka aún está inicializando (coordinator/topic)
+        max_tries = 30
+        delay = 2
+
+        for i in range(1, max_tries + 1):
+            try:
+                await self.consumer.start()
+                self.enabled = True
+                print(f"[BLOCKCHAIN] Kafka consumer started (try {i})")
+                return
+            except Exception as e:
+                print(f"[BLOCKCHAIN] Kafka not ready ({i}/{max_tries}): {repr(e)}")
+                await asyncio.sleep(delay)
+
+        self.enabled = False
+        print("[BLOCKCHAIN] Kafka consumer disabled (could not start)")
 
     async def stop(self):
-        await self.consumer.stop()
-        print("[BLOCKCHAIN] Kafka consumer stopped")
-
-    async def _append_block(self, topic: str, payload: dict):
-        # Normaliza payload a JSON determinístico (para recomputar hash igual)
-        payload_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
-        ts_ms = int(time.time() * 1000)
-
-        async with SessionLocal() as session:
-            last = (await session.execute(select(LedgerBlock).order_by(desc(LedgerBlock.index)).limit(1))).scalars().first()
-            next_index = (last.index + 1) if last else 1
-            prev_hash = last.hash if last else GENESIS_PREV
-
-            event_type = payload.get("event_type") or topic
-
-            h = compute_block_hash(next_index, prev_hash, topic, event_type, ts_ms, payload_json)
-
-            b = LedgerBlock(
-                index=next_index,
-                prev_hash=prev_hash,
-                hash=h,
-                topic=topic,
-                event_type=str(event_type),
-                payload_json=payload_json,
-                ts_ms=ts_ms,
-            )
-            session.add(b)
-            await session.commit()
-
-        print(f"[BLOCKCHAIN] appended index={next_index} topic={topic}")
+        if self.enabled:
+            try:
+                await self.consumer.stop()
+            finally:
+                self.enabled = False
 
     async def run_forever(self):
+        if not self.enabled:
+            print("[BLOCKCHAIN] Consumer is disabled; run_forever will not start.")
+            return
+
         async for msg in self.consumer:
             try:
                 raw = msg.value.decode("utf-8")
-                payload = json.loads(raw)
-            except Exception:
-                payload = {"raw": str(msg.value)}
+                event = json.loads(raw)
 
-            await self._append_block(msg.topic, payload)
+                print(
+                    f"[BLOCKCHAIN] Received topic={msg.topic} "
+                    f"partition={msg.partition} offset={msg.offset} "
+                    f"key={msg.key.decode('utf-8') if msg.key else None} "
+                    f"event={event}"
+                )
+
+                block_hash = await self.ledger.store_block(event)
+                print(f"[BLOCKCHAIN] Block stored hash={block_hash}")
+
+            except json.JSONDecodeError as e:
+                print(f"[BLOCKCHAIN] Invalid JSON: {repr(e)} raw={msg.value!r}")
+
+            except Exception as e:
+                print(f"[BLOCKCHAIN] Error processing message: {repr(e)}")
+                traceback.print_exc()

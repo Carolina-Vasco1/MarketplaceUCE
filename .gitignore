@@ -28,3 +28,8 @@ build/
 # Logs
 *.log
 docker_errors.log
+
+**/.terraform/*
+**/.terraform.lock.hcl
+**/*.tfplan
+**/tfplan
