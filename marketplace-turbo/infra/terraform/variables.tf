@@ -1,105 +1,100 @@
+############################
+# Core
+############################
 variable "project_name" {
-  type    = string
-  default = "marketplaceuce-qa"
+  type        = string
+  description = "Nombre base del proyecto/stack"
 }
 
 variable "region" {
-  type    = string
-  default = "us-east-1"
+  type        = string
+  description = "Región AWS"
+  default     = "us-east-1"
 }
 
+############################
+# Networking
+############################
 variable "vpc_cidr" {
-  type    = string
-  default = "10.20.0.0/16"
+  type        = string
+  description = "CIDR del VPC"
+  default     = "10.20.0.0/16"
 }
 
 variable "public_subnets" {
-  type    = list(string)
-  default = ["10.20.1.0/24", "10.20.2.0/24"]
+  type        = list(string)
+  description = "CIDRs de subnets públicas"
+  default     = ["10.20.1.0/24", "10.20.2.0/24"]
 }
 
 variable "private_subnets" {
-  type    = list(string)
-  default = ["10.20.11.0/24", "10.20.12.0/24"]
+  type        = list(string)
+  description = "CIDRs de subnets privadas"
+  default     = ["10.20.11.0/24", "10.20.12.0/24"]
 }
 
+variable "enable_nat" {
+  type        = bool
+  description = "Habilitar NAT Gateway para subnets privadas"
+  default     = false
+}
+
+############################
+# Compute / Access
+############################
 variable "instance_type" {
-  type    = string
-  default = "t3.micro"
+  type        = string
+  description = "Tipo de instancia EC2"
+  default     = "t3.micro"
 }
 
 variable "key_name" {
   type        = string
-  description = "KeyPair existente en AWS"
+  description = "KeyPair existente en AWS (para SSH)"
 }
 
 variable "allowed_ssh_cidr" {
   type        = string
-  description = "IP publica para SSH al bastion (x.x.x.x/32)"
+  description = "IP pública permitida para SSH al bastion (x.x.x.x/32)"
 }
 
+############################
+# App / Ports / ASG
+############################
 variable "app_port" {
-  type    = number
-  default = 8000
-}
-
-variable "app_image" {
-  type    = string
-  default = "nginx:alpine"
-}
-
-variable "app_container_name" {
-  type    = string
-  default = "app"
-}
-
-variable "enable_nat" {
-  type    = bool
-  default = false
+  type        = number
+  description = "Puerto expuesto por el gateway detrás del ALB"
+  default     = 8000
 }
 
 variable "asg_min" {
-  type    = number
-  default = 1
+  type        = number
+  description = "Mínimo de instancias en el Auto Scaling Group"
+  default     = 1
 }
 
 variable "asg_max" {
-  type    = number
-  default = 2
+  type        = number
+  description = "Máximo de instancias en el Auto Scaling Group"
+  default     = 2
 }
 
 variable "asg_desired" {
-  type    = number
-  default = 1
+  type        = number
+  description = "Deseado de instancias en el Auto Scaling Group"
+  default     = 1
 }
 
-# 🔽 PUERTOS (si los necesitas más adelante)
-variable "auth_port" {
-  type    = number
-  default = 8001
+############################
+# Docker images
+############################
+variable "dockerhub_user" {
+  type        = string
+  description = "Docker Hub username/org que hostea las imágenes"
 }
 
-variable "product_port" {
-  type    = number
-  default = 8002
-}
-
-variable "order_port" {
-  type    = number
-  default = 8003
-}
-
-variable "payment_port" {
-  type    = number
-  default = 8004
-}
-
-variable "notification_port" {
-  type    = number
-  default = 8005
-}
-
-variable "blockchain_port" {
-  type    = number
-  default = 8006
+variable "image_tag" {
+  type        = string
+  description = "Tag de las imágenes"
+  default     = "qa"
 }

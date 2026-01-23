@@ -7,7 +7,7 @@ output "bastion_public_ip" {
 }
 
 output "ssh_bastion" {
-  value = "ssh -i <TU_PEM>.pem ec2-user@${aws_instance.bastion.public_ip}"
+  value = "ssh -i marketplace-key.pem ec2-user@${aws_instance.bastion.public_ip}"
 }
 
 output "vpc_id" {

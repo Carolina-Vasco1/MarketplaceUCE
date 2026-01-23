@@ -1,23 +1,40 @@
-name: marketplaceuce-qa
+name: marketplaceuce
 
 services:
   # =========================
-  # API GATEWAY (EXPOSED)
+  # FRONTEND (QA)
+  # =========================
+  frontend:
+    image: carovasco/marketplace-frontend:qa
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  # =========================
+  # API GATEWAY (QA)
   # =========================
   gateway:
-    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/gateway:qa
+    image: carovasco/marketplace-gateway:qa
     ports:
       - "8000:8000"
-    env_file:
-      - .env
     environment:
-      # URLs internas entre contenedores (red Docker)
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+
       AUTH_URL: http://auth-service:8001
       PRODUCT_URL: http://product-service:8002
       ORDER_URL: http://order-service:8003
       PAYMENT_URL: http://payment-service:8004
       NOTIF_URL: http://notification-service:8005
       BLOCKCHAIN_URL: http://blockchain-service:8006
+
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
     depends_on:
       auth-service:
         condition: service_started
@@ -34,114 +51,129 @@ services:
     restart: unless-stopped
 
   # =========================
-  # AUTH SERVICE
+  # AUTH SERVICE (QA)
   # =========================
   auth-service:
-    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/auth-service:qa
-    env_file:
-      - .env
+    image: carovasco/marketplace-auth:qa
+    ports:
+      - "8001:8001"
     environment:
       POSTGRES_URL: ${AUTH_POSTGRES_URL:-postgresql+asyncpg://auth:auth@postgres:5432/auth_db}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      # JWT_* y SMTP_* vienen desde .env
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
+      JWT_EXPIRES_MIN: ${JWT_EXPIRES_MIN:-1440}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   # =========================
-  # PRODUCT SERVICE
+  # PRODUCT SERVICE (QA)
   # =========================
   product-service:
-    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/product-service:qa
-    env_file:
-      - .env
+    image: carovasco/marketplace-product:qa
+    ports:
+      - "8002:8002"
     environment:
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
       MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
       MONGO_DB: ${MONGO_DB:-marketUce}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      # JWT_* viene desde .env
     depends_on:
       mongo:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   # =========================
-  # ORDER SERVICE
+  # ORDER SERVICE (QA)
   # =========================
   order-service:
-    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/order-service:qa
-    env_file:
-      - .env
+    image: carovasco/marketplace-order:qa
+    ports:
+      - "8003:8003"
     environment:
       POSTGRES_URL: ${ORDER_POSTGRES_URL:-postgresql+asyncpg://order:order@postgres:5432/order_db}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
-      # JWT_* viene desde .env
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   # =========================
-  # PAYMENT SERVICE
+  # PAYMENT SERVICE (QA)
   # =========================
   payment-service:
-    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/payment-service:qa
-    env_file:
-      - .env
+    image: carovasco/marketplace-payment:qa
+    ports:
+      - "8004:8004"
     environment:
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
       PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
       PAYPAL_BASE_URL: ${PAYPAL_BASE_URL:-https://api-m.sandbox.paypal.com}
-      # PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET / PAYPAL_WEBHOOK_ID vienen desde .env
-      # JWT_* viene desde .env
+      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   # =========================
-  # NOTIFICATION SERVICE
+  # NOTIFICATION SERVICE (QA)
   # =========================
   notification-service:
-    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/notification-service:qa
-    env_file:
-      - .env
+    image: carovasco/marketplace-notification:qa
+    ports:
+      - "8005:8005"
     environment:
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
-      # SMTP_USER / SMTP_PASSWORD / SMTP_FROM vienen desde .env
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-Marketplace UCE <no-reply@marketplaceuce.local>}
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
         condition: service_started
     restart: unless-stopped
 
   # =========================
-  # BLOCKCHAIN SERVICE
+  # BLOCKCHAIN SERVICE (QA)
   # =========================
   blockchain-service:
-    image: 179494552453.dkr.ecr.us-east-1.amazonaws.com/marketplaceuce-qa/blockchain-service:qa
-    env_file:
-      - .env
+    image: carovasco/marketplace-blockchain:qa
+    ports:
+      - "8006:8006"
     environment:
-      POSTGRES_URL: ${BLOCKCHAIN_POSTGRES_URL:-postgresql+asyncpg://postgres:postgres@postgres:5432/postgres}
+      POSTGRES_URL: ${BLOCKCHAIN_POSTGRES_URL:-postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres}
       KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:29092}
-      # JWT_* viene desde .env
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      JWT_ALG: ${JWT_ALG:-HS256}
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   # =========================
@@ -152,23 +184,40 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "5432:5432" # opcional; para debug. Puedes quitarlo en prod.
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d
+    command: ["postgres", "-c", "max_connections=200"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
     restart: unless-stopped
 
   mongo:
     image: mongo:7
     ports:
-      - "27017:27017" # opcional; para debug. Puedes quitarlo en prod.
+      - "27017:27017"
     volumes:
       - mongodata:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval \"db.adminCommand('ping')\" --quiet || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
     restart: unless-stopped
 
   redis:
     image: redis:7
     ports:
-      - "6379:6379" # opcional
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
     restart: unless-stopped
 
   zookeeper:
@@ -176,16 +225,15 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
     ports:
-      - "2181:2181" # opcional
+      - "2181:2181"
     restart: unless-stopped
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     depends_on:
-      zookeeper:
-        condition: service_started
+      - zookeeper
     ports:
-      - "9092:9092" # opcional (host); en AWS puedes quitarlo
+      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -194,13 +242,36 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:29092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 25
     restart: unless-stopped
 
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - "5672:5672"   # opcional
-      - "15672:15672" # opcional
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    volumes:
+      - ./infra/prometheus:/etc/prometheus:ro
+    ports:
+      - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
     restart: unless-stopped
 
 volumes:

@@ -13,17 +13,14 @@ data "aws_ami" "al2023" {
 }
 
 locals {
-  name = var.project_name
-
-  azs = slice(data.aws_availability_zones.available.names, 0, 2)
-
-  # Si NAT habilitado => app en privadas, si no => app en públicas
+  name           = var.project_name
+  azs            = slice(data.aws_availability_zones.available.names, 0, 2)
   asg_subnet_ids = var.enable_nat ? aws_subnet.private[*].id : aws_subnet.public[*].id
 }
 
-# -----------------------
-# VPC + Subnets + Routing
-# -----------------------
+###########################
+# VPC
+###########################
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
@@ -73,7 +70,7 @@ resource "aws_route_table_association" "public_assoc" {
   route_table_id = aws_route_table.public.id
 }
 
-# NAT opcional (solo si enable_nat = true)
+# NAT opcional (déjalo apagado en AWS Academy si no lo necesitas)
 resource "aws_eip" "nat" {
   count  = var.enable_nat ? 1 : 0
   domain = "vpc"
@@ -107,18 +104,15 @@ resource "aws_route_table_association" "private_assoc" {
   route_table_id = aws_route_table.private[0].id
 }
 
-# -----------------------
+###########################
 # Security Groups
-# -----------------------
-
-# SG del ALB: recibe HTTP de internet
+###########################
 resource "aws_security_group" "alb_sg" {
   name        = "${local.name}-alb-sg"
   description = "ALB SG"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -126,7 +120,6 @@ resource "aws_security_group" "alb_sg" {
   }
 
   egress {
-    description = "All out"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -136,14 +129,12 @@ resource "aws_security_group" "alb_sg" {
   tags = { Name = "${local.name}-alb-sg" }
 }
 
-# SG del Bastion: SSH desde tu IP
 resource "aws_security_group" "bastion_sg" {
   name        = "${local.name}-bastion-sg"
   description = "Bastion SG"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "SSH from my IP"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -151,7 +142,6 @@ resource "aws_security_group" "bastion_sg" {
   }
 
   egress {
-    description = "All out"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -161,24 +151,21 @@ resource "aws_security_group" "bastion_sg" {
   tags = { Name = "${local.name}-bastion-sg" }
 }
 
-# SG de las instancias APP (ASG):
-# - Solo recibe app_port desde el ALB
-# - SSH solo desde el bastion
 resource "aws_security_group" "app_sg" {
   name        = "${local.name}-app-sg"
   description = "ASG instances SG"
   vpc_id      = aws_vpc.main.id
 
+  # tráfico app SOLO desde el ALB
   ingress {
-    description     = "App from ALB"
     from_port       = var.app_port
     to_port         = var.app_port
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
   }
 
+  # ssh SOLO desde el bastion
   ingress {
-    description     = "SSH from Bastion"
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
@@ -186,7 +173,6 @@ resource "aws_security_group" "app_sg" {
   }
 
   egress {
-    description = "All out"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -196,9 +182,9 @@ resource "aws_security_group" "app_sg" {
   tags = { Name = "${local.name}-app-sg" }
 }
 
-# -----------------------
+###########################
 # Bastion EC2
-# -----------------------
+###########################
 resource "aws_instance" "bastion" {
   ami                         = data.aws_ami.al2023.id
   instance_type               = var.instance_type
@@ -210,9 +196,9 @@ resource "aws_instance" "bastion" {
   tags = { Name = "${local.name}-bastion" }
 }
 
-# -----------------------
+###########################
 # ALB + Target Group + Listener
-# -----------------------
+###########################
 resource "aws_lb" "alb" {
   name               = "${local.name}-alb"
   load_balancer_type = "application"
@@ -223,7 +209,7 @@ resource "aws_lb" "alb" {
 }
 
 resource "aws_lb_target_group" "tg" {
-  name_prefix = "${local.name}-tg-"
+  name_prefix = "mktg-"
   port        = var.app_port
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
@@ -231,7 +217,7 @@ resource "aws_lb_target_group" "tg" {
 
   health_check {
     enabled             = true
-    path                = "/"
+    path                = "/health"
     matcher             = "200-399"
     interval            = 20
     timeout             = 5
@@ -239,9 +225,7 @@ resource "aws_lb_target_group" "tg" {
     unhealthy_threshold = 3
   }
 
-  lifecycle {
-    create_before_destroy = true
-  }
+  lifecycle { create_before_destroy = true }
 
   tags = { Name = "${local.name}-tg" }
 }
@@ -257,33 +241,22 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# -----------------------
+###########################
 # Launch Template + ASG
-# -----------------------
-data "template_file" "userdata" {
-  template = file("${path.module}/userdata.sh")
-
-  vars = {
-    AWS_REGION    = var.region
-    PROJECT_NAME  = var.project_name
-    DEPLOY_BUCKET = aws_s3_bucket.deploy.bucket
-    ECR_REGISTRY  = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com"
-  }
-}
-
-resource "aws_launch_template" "lt" {
-  name_prefix   = "${local.name}-lt-"
+###########################
+resource "aws_launch_template" "app" {
+  name_prefix   = "${local.name}-lt"
   image_id      = data.aws_ami.al2023.id
   instance_type = var.instance_type
   key_name      = var.key_name
 
   vpc_security_group_ids = [aws_security_group.app_sg.id]
 
-  user_data = base64encode(data.template_file.userdata.rendered)
-
-  iam_instance_profile {
-    name = aws_iam_instance_profile.app_profile.name
-  }
+  user_data = base64encode(templatefile("${path.module}/userdata.sh", {
+    DOCKERHUB_USER = var.dockerhub_user
+    TAG            = var.image_tag
+    APP_PORT       = var.app_port
+  }))
 
   tag_specifications {
     resource_type = "instance"
@@ -298,12 +271,12 @@ resource "aws_autoscaling_group" "asg" {
   desired_capacity          = var.asg_desired
   vpc_zone_identifier       = local.asg_subnet_ids
   health_check_type         = "ELB"
-  health_check_grace_period = 120
+  health_check_grace_period = 180
 
   target_group_arns = [aws_lb_target_group.tg.arn]
 
   launch_template {
-    id      = aws_launch_template.lt.id
+    id      = aws_launch_template.app.id
     version = "$Latest"
   }
 
@@ -311,5 +284,12 @@ resource "aws_autoscaling_group" "asg" {
     key                 = "Name"
     value               = "${local.name}-app"
     propagate_at_launch = true
+  }
+
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 50
+    }
   }
 }

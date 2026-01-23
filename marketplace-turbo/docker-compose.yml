@@ -2,23 +2,31 @@ name: marketplaceuce
 
 services:
   # =========================
-  # FRONTEND (QA)
+  # FRONTEND (DEV - VITE)
   # =========================
   frontend:
-    image: carovasco/marketplace-frontend:qa
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
     ports:
       - "5173:5173"
     environment:
       VITE_API_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - gateway
     restart: unless-stopped
 
   # =========================
-  # API GATEWAY (QA)
+  # API GATEWAY
   # =========================
   gateway:
-    image: carovasco/marketplace-gateway:qa
+    build:
+      context: ./backend
+      dockerfile: gateway/Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -51,10 +59,12 @@ services:
     restart: unless-stopped
 
   # =========================
-  # AUTH SERVICE (QA)
+  # AUTH SERVICE
   # =========================
   auth-service:
-    image: carovasco/marketplace-auth:qa
+    build:
+      context: ./backend
+      dockerfile: services/auth-service/Dockerfile
     ports:
       - "8001:8001"
     environment:
@@ -76,10 +86,12 @@ services:
     restart: unless-stopped
 
   # =========================
-  # PRODUCT SERVICE (QA)
+  # PRODUCT SERVICE
   # =========================
   product-service:
-    image: carovasco/marketplace-product:qa
+    build:
+      context: ./backend
+      dockerfile: services/product-service/Dockerfile
     ports:
       - "8002:8002"
     environment:
@@ -96,10 +108,12 @@ services:
     restart: unless-stopped
 
   # =========================
-  # ORDER SERVICE (QA)
+  # ORDER SERVICE
   # =========================
   order-service:
-    image: carovasco/marketplace-order:qa
+    build:
+      context: ./backend
+      dockerfile: services/order-service/Dockerfile
     ports:
       - "8003:8003"
     environment:
@@ -115,10 +129,12 @@ services:
     restart: unless-stopped
 
   # =========================
-  # PAYMENT SERVICE (QA)
+  # PAYMENT SERVICE
   # =========================
   payment-service:
-    image: carovasco/marketplace-payment:qa
+    build:
+      context: ./backend
+      dockerfile: services/payment-service/Dockerfile
     ports:
       - "8004:8004"
     environment:
@@ -136,10 +152,12 @@ services:
     restart: unless-stopped
 
   # =========================
-  # NOTIFICATION SERVICE (QA)
+  # NOTIFICATION SERVICE
   # =========================
   notification-service:
-    image: carovasco/marketplace-notification:qa
+    build:
+      context: ./backend
+      dockerfile: services/notification-service/Dockerfile
     ports:
       - "8005:8005"
     environment:
@@ -158,10 +176,12 @@ services:
     restart: unless-stopped
 
   # =========================
-  # BLOCKCHAIN SERVICE (QA)
+  # BLOCKCHAIN SERVICE
   # =========================
   blockchain-service:
-    image: carovasco/marketplace-blockchain:qa
+    build:
+      context: ./backend
+      dockerfile: services/blockchain-service/Dockerfile
     ports:
       - "8006:8006"
     environment:
@@ -260,7 +280,7 @@ services:
     image: prom/prometheus:v2.55.0
     volumes:
       - ./backend/infra/prometheus:/etc/prometheus:ro
-    ports:
+    poArts:
       - "9090:9090"
     command:
       - --config.file=/etc/prometheus/prometheus.yml
