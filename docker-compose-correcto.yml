@@ -1,0 +1,177 @@
+version: '3.8'
+
+services:
+  # Frontend - Puerto 3000
+  frontend:
+    image: marketplace-frontend:qa
+    container_name: marketplace-frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - marketplace
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Gateway - Puerto 8000
+  gateway:
+    image: marketplace-gateway:qa
+    container_name: marketplace-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/marketplace
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    networks:
+      - marketplace
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Auth Service - Puerto 8001
+  auth-service:
+    image: marketplace-auth-service:qa
+    container_name: marketplace-auth-service
+    ports:
+      - "8001:8001"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/auth
+      - API_PORT=8001
+    networks:
+      - marketplace
+
+  # Product Service - Puerto 8002
+  product-service:
+    image: marketplace-product-service:qa
+    container_name: marketplace-product-service
+    ports:
+      - "8002:8002"
+    depends_on:
+      - postgres
+      - mongo
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/products
+      - MONGO_URL=mongodb://mongo:27017
+      - API_PORT=8002
+    networks:
+      - marketplace
+
+  # Order Service - Puerto 8003
+  order-service:
+    image: marketplace-order-service:qa
+    container_name: marketplace-order-service
+    ports:
+      - "8003:8003"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/orders
+      - API_PORT=8003
+    networks:
+      - marketplace
+
+  # Payment Service - Puerto 8004
+  payment-service:
+    image: marketplace-payment-service:qa
+    container_name: marketplace-payment-service
+    ports:
+      - "8004:8004"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/payments
+      - API_PORT=8004
+    networks:
+      - marketplace
+
+  # Notification Service - Puerto 8005
+  notification-service:
+    image: marketplace-notification-service:qa
+    container_name: marketplace-notification-service
+    ports:
+      - "8005:8005"
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      - DATABASE_URL=postgresql://admin:password@postgres:5432/notifications
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - API_PORT=8005
+    networks:
+      - marketplace
+
+  # Blockchain Service - Puerto 8006
+  blockchain-service:
+    image: marketplace-blockchain-service:qa
+    container_name: marketplace-blockchain-service
+    ports:
+      - "8006:8006"
+    environment:
+      - API_PORT=8006
+    networks:
+      - marketplace
+
+  # PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: marketplace-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - marketplace
+    ports:
+      - "5432:5432"
+
+  # MongoDB
+  mongo:
+    image: mongo:6.0
+    container_name: marketplace-mongo
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - marketplace
+    ports:
+      - "27017:27017"
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: marketplace-redis
+    networks:
+      - marketplace
+    ports:
+      - "6379:6379"
+
+  # RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: marketplace-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - marketplace
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+networks:
+  marketplace:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mongo_data:

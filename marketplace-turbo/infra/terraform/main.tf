@@ -16,22 +16,25 @@ locals {
   name           = var.project_name
   azs            = slice(data.aws_availability_zones.available.names, 0, 2)
   asg_subnet_ids = var.enable_nat ? aws_subnet.private[*].id : aws_subnet.public[*].id
+  ami_id         = data.aws_ami.al2023.id
 }
 
-###########################
-# VPC
-###########################
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = { Name = "${local.name}-vpc" }
+  tags = {
+    Name = "${local.name}-vpc"
+  }
 }
 
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
-  tags   = { Name = "${local.name}-igw" }
+
+  tags = {
+    Name = "${local.name}-igw"
+  }
 }
 
 resource "aws_subnet" "public" {
@@ -41,7 +44,9 @@ resource "aws_subnet" "public" {
   availability_zone       = local.azs[count.index]
   map_public_ip_on_launch = true
 
-  tags = { Name = "${local.name}-public-${count.index + 1}" }
+  tags = {
+    Name = "${local.name}-public-${count.index + 1}"
+  }
 }
 
 resource "aws_subnet" "private" {
@@ -50,12 +55,17 @@ resource "aws_subnet" "private" {
   cidr_block        = var.private_subnets[count.index]
   availability_zone = local.azs[count.index]
 
-  tags = { Name = "${local.name}-private-${count.index + 1}" }
+  tags = {
+    Name = "${local.name}-private-${count.index + 1}"
+  }
 }
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
-  tags   = { Name = "${local.name}-rt-public" }
+
+  tags = {
+    Name = "${local.name}-rt-public"
+  }
 }
 
 resource "aws_route" "public_inet" {
@@ -70,11 +80,14 @@ resource "aws_route_table_association" "public_assoc" {
   route_table_id = aws_route_table.public.id
 }
 
-# NAT opcional (déjalo apagado en AWS Academy si no lo necesitas)
+# NAT opcional
 resource "aws_eip" "nat" {
   count  = var.enable_nat ? 1 : 0
   domain = "vpc"
-  tags   = { Name = "${local.name}-nat-eip" }
+
+  tags = {
+    Name = "${local.name}-nat-eip"
+  }
 }
 
 resource "aws_nat_gateway" "nat" {
@@ -82,13 +95,19 @@ resource "aws_nat_gateway" "nat" {
   allocation_id = aws_eip.nat[0].id
   subnet_id     = aws_subnet.public[0].id
   depends_on    = [aws_internet_gateway.igw]
-  tags          = { Name = "${local.name}-nat" }
+
+  tags = {
+    Name = "${local.name}-nat"
+  }
 }
 
 resource "aws_route_table" "private" {
   count  = var.enable_nat ? 1 : 0
   vpc_id = aws_vpc.main.id
-  tags   = { Name = "${local.name}-rt-private" }
+
+  tags = {
+    Name = "${local.name}-rt-private"
+  }
 }
 
 resource "aws_route" "private_out" {
@@ -126,7 +145,9 @@ resource "aws_security_group" "alb_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "${local.name}-alb-sg" }
+  tags = {
+    Name = "${local.name}-alb-sg"
+  }
 }
 
 resource "aws_security_group" "bastion_sg" {
@@ -148,7 +169,9 @@ resource "aws_security_group" "bastion_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "${local.name}-bastion-sg" }
+  tags = {
+    Name = "${local.name}-bastion-sg"
+  }
 }
 
 resource "aws_security_group" "app_sg" {
@@ -156,7 +179,6 @@ resource "aws_security_group" "app_sg" {
   description = "ASG instances SG"
   vpc_id      = aws_vpc.main.id
 
-  # tráfico app SOLO desde el ALB
   ingress {
     from_port       = var.app_port
     to_port         = var.app_port
@@ -164,7 +186,6 @@ resource "aws_security_group" "app_sg" {
     security_groups = [aws_security_group.alb_sg.id]
   }
 
-  # ssh SOLO desde el bastion
   ingress {
     from_port       = 22
     to_port         = 22
@@ -179,7 +200,9 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "${local.name}-app-sg" }
+  tags = {
+    Name = "${local.name}-app-sg"
+  }
 }
 
 ###########################
@@ -193,7 +216,9 @@ resource "aws_instance" "bastion" {
   associate_public_ip_address = true
   key_name                    = var.key_name
 
-  tags = { Name = "${local.name}-bastion" }
+  tags = {
+    Name = "${local.name}-bastion"
+  }
 }
 
 ###########################
@@ -205,7 +230,9 @@ resource "aws_lb" "alb" {
   security_groups    = [aws_security_group.alb_sg.id]
   subnets            = aws_subnet.public[*].id
 
-  tags = { Name = "${local.name}-alb" }
+  tags = {
+    Name = "${local.name}-alb"
+  }
 }
 
 resource "aws_lb_target_group" "tg" {
@@ -225,9 +252,13 @@ resource "aws_lb_target_group" "tg" {
     unhealthy_threshold = 3
   }
 
-  lifecycle { create_before_destroy = true }
+  lifecycle {
+    create_before_destroy = true
+  }
 
-  tags = { Name = "${local.name}-tg" }
+  tags = {
+    Name = "${local.name}-tg"
+  }
 }
 
 resource "aws_lb_listener" "http" {
@@ -246,21 +277,24 @@ resource "aws_lb_listener" "http" {
 ###########################
 resource "aws_launch_template" "app" {
   name_prefix   = "${local.name}-lt"
-  image_id      = data.aws_ami.al2023.id
+  image_id      = local.ami_id
   instance_type = var.instance_type
   key_name      = var.key_name
 
   vpc_security_group_ids = [aws_security_group.app_sg.id]
 
   user_data = base64encode(templatefile("${path.module}/userdata.sh", {
-    DOCKERHUB_USER = var.dockerhub_user
-    TAG            = var.image_tag
-    APP_PORT       = var.app_port
+    ECR_REGISTRY = replace(aws_ecr_repository.images["marketplace-gateway"].repository_url, "/marketplace-gateway", "")
+    AWS_REGION   = var.region
+    IMAGE_TAG    = var.image_tag
   }))
 
   tag_specifications {
     resource_type = "instance"
-    tags = { Name = "${local.name}-app" }
+
+    tags = {
+      Name = "${local.name}-app"
+    }
   }
 }
 
@@ -288,6 +322,7 @@ resource "aws_autoscaling_group" "asg" {
 
   instance_refresh {
     strategy = "Rolling"
+
     preferences {
       min_healthy_percentage = 50
     }

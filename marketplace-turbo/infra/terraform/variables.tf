@@ -4,6 +4,7 @@
 variable "project_name" {
   type        = string
   description = "Nombre base del proyecto/stack"
+  default     = "marketplaceuce-qa"
 }
 
 variable "region" {
@@ -48,9 +49,21 @@ variable "instance_type" {
   default     = "t3.micro"
 }
 
+variable "ami_id" {
+  type        = string
+  description = "AMI ID personalizada (deja vacío para usar el default Amazon Linux 2023)"
+  default     = ""
+}
+
 variable "key_name" {
   type        = string
   description = "KeyPair existente en AWS (para SSH)"
+}
+
+variable "key_name_path" {
+  type        = string
+  description = "Ruta al archivo .pem de la key privada"
+  default     = ""
 }
 
 variable "allowed_ssh_cidr" {
