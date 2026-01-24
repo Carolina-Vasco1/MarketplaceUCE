@@ -86,3 +86,4 @@ export default function RecommendationsPage() {
     </Container>
   );
 }
+
