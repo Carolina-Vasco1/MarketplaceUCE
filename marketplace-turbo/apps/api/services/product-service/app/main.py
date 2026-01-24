@@ -1,0 +1,23 @@
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
+
+from app.routes.products import router as products_router
+from app.routes.categories import router as categories_router
+from app.routes.upload import router as upload_router
+from app.routes.admin_products import router as admin_products_router
+
+app = FastAPI(title="Product Service", version="1.0.0")
+
+app.include_router(products_router)
+app.include_router(categories_router)
+app.include_router(upload_router)
+app.include_router(admin_products_router)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")

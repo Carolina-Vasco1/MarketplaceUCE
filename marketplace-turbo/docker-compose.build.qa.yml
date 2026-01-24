@@ -1,0 +1,56 @@
+name: marketplaceuce
+
+services:
+  # FRONTEND (context apps/web)
+  frontend:
+    image: carovasco/marketplace-frontend:qa
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        VITE_API_URL: http://localhost:8000
+
+  # GATEWAY (context apps/api)
+  gateway:
+    image: carovasco/marketplace-gateway:qa
+    build:
+      context: apps/api
+      dockerfile: gateway/Dockerfile
+
+  # AUTH (context apps/api)
+  auth-service:
+    image: carovasco/marketplace-auth:qa
+    build:
+      context: apps/api
+      dockerfile: services/auth-service/Dockerfile
+
+  product-service:
+    image: carovasco/marketplace-product:qa
+    build:
+      context: apps/api
+      dockerfile: services/product-service/Dockerfile
+
+  order-service:
+    image: carovasco/marketplace-order:qa
+    build:
+      context: apps/api
+      dockerfile: services/order-service/Dockerfile
+
+  payment-service:
+    image: carovasco/marketplace-payment:qa
+    build:
+      context: apps/api
+      dockerfile: services/payment-service/Dockerfile
+
+  notification-service:
+    image: carovasco/marketplace-notification:qa
+    build:
+      context: apps/api
+      dockerfile: services/notification-service/Dockerfile
+
+  blockchain-service:
+    image: carovasco/marketplace-blockchain:qa
+    build:
+      context: apps/api
+      dockerfile: services/blockchain-service/Dockerfile
