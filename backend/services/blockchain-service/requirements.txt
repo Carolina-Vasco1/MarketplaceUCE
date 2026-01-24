@@ -1,9 +1,0 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-asyncpg
-aiokafka
-pydantic>=2.0
-pydantic-settings
-prometheus-fastapi-instrumentator
-web3

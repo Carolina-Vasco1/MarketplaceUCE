@@ -1,7 +1,0 @@
-{
-  "name": "api",
-  "private": true,
-  "scripts": {
-    "dev": "powershell -ExecutionPolicy Bypass -Command \".\\.venv\\Scripts\\Activate.ps1; python -m uvicorn gateway.app.main:app --reload --port 8000\""
-  }
-}
